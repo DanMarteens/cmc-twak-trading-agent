@@ -91,6 +91,14 @@ llm:
 cmc:
   mcp_url: https://mcp.coinmarketcap.com/mcp
   # API key from env: CMC_MCP_API_KEY  (header X-CMC-MCP-API-KEY)
+  # CMC tools need numeric ids (not symbols). Verified via scripts/verify_cmc.py.
+  # Extend for the full 149-token universe (resolve ids with search_cryptos).
+  token_ids:
+    BTC: "1"
+    ETH: "1027"
+    BNB: "1839"
+    CAKE: "7186"
+    USDT: "825"
 
 twak:
   agent_wallet: true            # agent wallet mode = autonomous signing under rules

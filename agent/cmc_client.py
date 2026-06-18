@@ -19,6 +19,7 @@ Telegram / by calling list_tools() once, then fill the mapping. Everything else
 
 from __future__ import annotations
 
+import json
 import os
 from typing import Protocol
 
@@ -78,75 +79,150 @@ class MockCMCClient:
         return snap
 
 
-# --- Real CMC MCP client -------------------------------------------------------
-# Confirm these names via list_tools() against the live server before going live.
-_TOOL_NAMES = {
-    "quote": "get_quotes_latest",
-    "technicals": "get_technical_indicators",
-    "global": "get_global_metrics",
-    "news": "get_latest_news",
+# --- Real CMC MCP client (tool names + shapes verified against live server) ----
+# Tools require a CMC numeric `id` (not symbol). Default map for our universe;
+# extend / resolve via search_cryptos for the full 149-token list.
+_DEFAULT_IDS = {"BTC": "1", "ETH": "1027", "BNB": "1839", "CAKE": "7186", "USDT": "825"}
+_TOOL = {
+    "quotes": "get_crypto_quotes_latest",
+    "technicals": "get_crypto_technical_analysis",
+    "global": "get_global_metrics_latest",
+    "news": "get_crypto_latest_news",
 }
 
 
+def _num(x, default: float = 0.0) -> float:
+    """Parse CMC's display strings into floats: '+58.18%', '608.13', '2.16 T'."""
+    if isinstance(x, (int, float)):
+        return float(x)
+    if not isinstance(x, str):
+        return default
+    s = x.strip().replace(",", "").replace("%", "").replace("+", "")
+    mult = 1.0
+    for suf, m in (("T", 1e12), ("B", 1e9), ("M", 1e6), ("K", 1e3)):
+        if s.upper().endswith(suf):
+            mult = m
+            s = s[:-1].strip()
+            break
+    try:
+        return float(s) * mult
+    except ValueError:
+        return default
+
+
+def derive_macd_state(macd: dict) -> str:
+    """histogram = macdLine - signalLine. Sign -> bullish/bearish, ~0 -> neutral."""
+    hist = _num(macd.get("histogram"))
+    line = _num(macd.get("macdLine"))
+    sig = _num(macd.get("signalLine"))
+    eps = 1e-6
+    if hist > eps and line >= sig:
+        return "bullish"
+    if hist < -eps and line <= sig:
+        return "bearish"
+    return "neutral"
+
+
+def derive_ema_trend(ma: dict, eps: float = 0.001) -> str:
+    """Short vs medium EMA: ema7 > ema30 -> up, < -> down, within eps -> flat."""
+    fast = _num(ma.get("exponential_moving_average_7_day"))
+    slow = _num(ma.get("exponential_moving_average_30_day"))
+    if slow <= 0:
+        return "flat"
+    if fast > slow * (1 + eps):
+        return "up"
+    if fast < slow * (1 - eps):
+        return "down"
+    return "flat"
+
+
 class CMCMCPClient:
-    def __init__(self, mcp_url: str, api_key: str | None = None, timeout: float = 30.0):
+    def __init__(self, mcp_url: str, api_key: str | None = None, timeout: float = 30.0,
+                 ids: dict | None = None):
         import httpx
 
         self.url = mcp_url
+        self.ids = ids or _DEFAULT_IDS
         self.api_key = api_key or os.environ.get("CMC_MCP_API_KEY", "")
         if not self.api_key:
             raise RuntimeError("CMC_MCP_API_KEY not set")
-        self._client = httpx.Client(
-            timeout=timeout,
-            headers={
-                "X-CMC-MCP-API-KEY": self.api_key,
-                "Content-Type": "application/json",
-                "Accept": "application/json, text/event-stream",
-            },
-        )
+        self._client = httpx.Client(timeout=timeout, headers={
+            "X-CMC-MCP-API-KEY": self.api_key,
+            "Content-Type": "application/json",
+            "Accept": "application/json, text/event-stream",
+        })
         self._id = 0
+        self._handshake()
 
-    def _rpc(self, method: str, params: dict | None = None) -> dict:
-        self._id += 1
-        payload = {"jsonrpc": "2.0", "id": self._id, "method": method, "params": params or {}}
+    def _post(self, payload: dict):
         resp = self._client.post(self.url, json=payload)
         resp.raise_for_status()
-        # MCP may stream SSE; for simple request/response servers JSON is returned.
-        data = resp.json()
-        if "error" in data:
-            raise RuntimeError(f"MCP error: {data['error']}")
-        return data.get("result", {})
+        if "text/event-stream" in resp.headers.get("content-type", ""):
+            for line in resp.text.splitlines():
+                if line.startswith("data:"):
+                    return json.loads(line[5:].strip())
+            return {}
+        return resp.json()
+
+    def _handshake(self) -> None:
+        self._id += 1
+        init = self._post({"jsonrpc": "2.0", "id": self._id, "method": "initialize",
+                           "params": {"protocolVersion": "2024-11-05", "capabilities": {},
+                                      "clientInfo": {"name": "bnb-hack-agent", "version": "0.1"}}})
+        sid = None
+        # session id may come back as a header on the raw response; re-issue safely
+        if isinstance(init, dict):
+            sid = init.get("result", {}).get("sessionId")
+        if sid:
+            self._client.headers["Mcp-Session-Id"] = sid
+        self._client.post(self.url, json={"jsonrpc": "2.0",
+                          "method": "notifications/initialized", "params": {}})
 
     def list_tools(self) -> list[dict]:
-        """Call once to discover real tool names; then fix _TOOL_NAMES."""
-        return self._rpc("tools/list").get("tools", [])
+        self._id += 1
+        return self._post({"jsonrpc": "2.0", "id": self._id,
+                           "method": "tools/list", "params": {}}).get("result", {}).get("tools", [])
 
-    def call_tool(self, name: str, arguments: dict) -> dict:
-        return self._rpc("tools/call", {"name": name, "arguments": arguments})
+    def call_tool(self, name: str, arguments: dict):
+        self._id += 1
+        res = self._post({"jsonrpc": "2.0", "id": self._id, "method": "tools/call",
+                          "params": {"name": name, "arguments": arguments}}).get("result", {})
+        if "error" in res:
+            raise RuntimeError(f"MCP tool {name}: {res['error']}")
+        content = res.get("content", res)
+        if isinstance(content, list):              # MCP wraps text content in a list
+            for item in content:
+                if isinstance(item, dict) and item.get("type") == "text":
+                    try:
+                        return json.loads(item["text"])
+                    except (ValueError, KeyError):
+                        return item.get("text")
+        return content
+
+    def _id_of(self, token: str) -> str | None:
+        return self.ids.get(token)
 
     def get_snapshot(self, tokens: list[str]) -> dict[str, dict]:
-        """Assemble the per-token snapshot from the relevant MCP tools.
-
-        Left as a thin orchestration over call_tool so the exact field paths can
-        be adjusted once the live response shapes are confirmed.
-        """
-        glob = self.call_tool(_TOOL_NAMES["global"], {})
-        fg = _dig(glob, "fear_and_greed", "value", default=50)
-        btc_dom = _dig(glob, "btc_dominance", default=54.0)
+        g = self.call_tool(_TOOL["global"], {}) or {}
+        fg = _num(_dig(g, "sentiment", "fear_greed", "current", "index", default=50))
+        btc_dom = _num(_dig(g, "dominance", "btc", "current", default="54%"))
 
         snap: dict[str, dict] = {}
         for t in tokens:
-            quote = self.call_tool(_TOOL_NAMES["quote"], {"symbol": t})
-            tech = self.call_tool(_TOOL_NAMES["technicals"], {"symbol": t})
-            news = self.call_tool(_TOOL_NAMES["news"], {"symbol": t, "limit": 5})
+            cid = self._id_of(t)
+            if not cid:
+                continue                            # not in id map -> skip (off-universe)
+            quotes = self.call_tool(_TOOL["quotes"], {"id": cid})
+            quote = quotes[0] if isinstance(quotes, list) and quotes else (quotes or {})
+            tech = self.call_tool(_TOOL["technicals"], {"id": cid}) or {}
             snap[t] = {
-                "price": _dig(quote, "price", default=0.0),
-                "rsi": _dig(tech, "rsi", default=50.0),
-                "macd_state": _dig(tech, "macd_state", default="neutral"),
-                "ema_trend": _dig(tech, "ema_trend", default="flat"),
+                "price": _num(_dig(quote, "price", default=0.0)),
+                "rsi": _num(_dig(tech, "rsi", "rsi14", default=50.0)),
+                "macd_state": derive_macd_state(tech.get("macd", {})),
+                "ema_trend": derive_ema_trend(tech.get("moving_averages", {})),
                 "fear_greed_index": fg,
                 "btc_dominance": btc_dom,
-                "news_sentiment": _dig(news, "sentiment", default=0.0),
+                "news_sentiment": 0.0,              # TODO: LLM-score get_crypto_latest_news
             }
         return snap
 
@@ -164,5 +240,6 @@ def _dig(obj, *keys, default=None):
 
 def build_cmc_client(cfg: dict) -> CMCClient:
     if cfg.get("mode") == "live":
-        return CMCMCPClient(cfg["cmc"]["mcp_url"])
+        ids = cfg.get("cmc", {}).get("token_ids")
+        return CMCMCPClient(cfg["cmc"]["mcp_url"], ids=ids)
     return MockCMCClient()

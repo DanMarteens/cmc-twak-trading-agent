@@ -86,7 +86,7 @@ this is the artifact for the rule-adherence score.
 
 ## Sponsor checklist
 
-- [x] **CMC** signals drive every decision (`cmc_client.py`, `signal_engine.py`)
+- [x] **CMC** signals drive every decision — live MCP verified (`scripts/verify_cmc.py`), real quotes/TA/F&G/dominance wired in `cmc_client.py`
 - [x] **TWAK** agent-wallet execution (`executor.py`)
 - [ ] **BNB SDK** ERC-8004 identity — register agent wallet + `agentId` (testnet) before lock
 - [ ] On-chain registration of agent wallet address in the Track 1 contract before lock
