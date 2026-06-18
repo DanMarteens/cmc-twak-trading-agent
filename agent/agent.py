@@ -33,6 +33,17 @@ from .state import PortfolioState
 def load_config(path: str = "config.yaml") -> dict:
     with open(path) as f:
         cfg = yaml.safe_load(f)
+    # Optionally load the broad, filter-verified trade universe from a file
+    # (scripts/build_universe.py) instead of the inline curated set.
+    cf = cfg["twak"].get("contracts_file")
+    if cf:
+        import json as _json
+        p = cf if os.path.isabs(cf) else os.path.join(os.path.dirname(os.path.abspath(path)), cf)
+        if os.path.exists(p):
+            with open(p) as cff:
+                loaded = _json.load(cff)
+            if loaded:
+                cfg["twak"]["token_contracts"] = loaded
     # Signal universe MUST equal the trade universe, else the strategy can only
     # act on tokens it also has signals for. Derive it from token_contracts so
     # the two can never drift (benchmark drives regime; quote is the cash leg).
