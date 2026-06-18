@@ -200,7 +200,7 @@
     177.8212,
     177.8212,
     177.8212,
-    177.8212
+    177.8204
   ],
   "benchmark": [
     200.0,
@@ -289,7 +289,7 @@
     113.261,
     118.197,
     113.3955,
-    111.1726
+    112.7808
   ],
   "kpis": {
     "initial": 200.0,
@@ -298,23 +298,16 @@
     "max_drawdown_pct": 13.55,
     "dq_pct": 30.0,
     "sharpe_like": -0.044,
-    "trades": 82,
-    "buyhold_pct": -44.41
+    "trades": 83,
+    "buyhold_pct": -43.61
   },
-  "positions": {},
-  "cash": 177.82,
+  "positions": {
+    "APE": 6.534237
+  },
+  "cash": 176.96,
   "blocked": 0,
   "block_reasons": {},
   "fills": [
-    {
-      "kind": "fill",
-      "token": "FIL",
-      "action": "close",
-      "size_usd": 0.0,
-      "tx_hash": "0xMOCK81ee3c8283fc48f7",
-      "reason": "per-position stop (-0.071)",
-      "ts": "2026-06-18T21:09:15.798834+00:00"
-    },
     {
       "kind": "fill",
       "token": "COMP",
@@ -322,7 +315,7 @@
       "size_usd": 0.0,
       "tx_hash": "0xMOCKe09c84c04a2ba4df",
       "reason": "per-position stop (-0.054)",
-      "ts": "2026-06-18T21:09:15.800739+00:00"
+      "ts": "2026-06-18T23:06:34.392051+00:00"
     },
     {
       "kind": "fill",
@@ -331,7 +324,7 @@
       "size_usd": 6.2,
       "tx_hash": "0xMOCKf31457eee719d049",
       "reason": "approved size=$6.20 (budget_mult=0.19, dd=0.122)",
-      "ts": "2026-06-18T21:09:15.803279+00:00"
+      "ts": "2026-06-18T23:06:34.394998+00:00"
     },
     {
       "kind": "fill",
@@ -340,7 +333,7 @@
       "size_usd": 5.96,
       "tx_hash": "0xMOCK9418a02b41cef6cd",
       "reason": "approved size=$5.96 (budget_mult=0.19, dd=0.122)",
-      "ts": "2026-06-18T21:09:15.805284+00:00"
+      "ts": "2026-06-18T23:06:34.397281+00:00"
     },
     {
       "kind": "fill",
@@ -349,7 +342,7 @@
       "size_usd": 0.0,
       "tx_hash": "0xMOCK1bd1e468768bdd09",
       "reason": "per-position stop (-0.045)",
-      "ts": "2026-06-18T21:09:15.808436+00:00"
+      "ts": "2026-06-18T23:06:34.400586+00:00"
     },
     {
       "kind": "fill",
@@ -358,7 +351,7 @@
       "size_usd": 0.0,
       "tx_hash": "0xMOCK03df1557ede5bf44",
       "reason": "per-position stop (-0.077)",
-      "ts": "2026-06-18T21:09:15.810423+00:00"
+      "ts": "2026-06-18T23:06:34.402576+00:00"
     },
     {
       "kind": "fill",
@@ -367,7 +360,7 @@
       "size_usd": 0.0,
       "tx_hash": "0xMOCK97f713073036f820",
       "reason": "per-position stop (-0.154)",
-      "ts": "2026-06-18T21:09:15.812405+00:00"
+      "ts": "2026-06-18T23:06:34.405000+00:00"
     },
     {
       "kind": "fill",
@@ -376,7 +369,16 @@
       "size_usd": 0.0,
       "tx_hash": "0xMOCKef298dc435adf85a",
       "reason": "per-position stop (-0.111)",
-      "ts": "2026-06-18T21:09:15.815917+00:00"
+      "ts": "2026-06-18T23:06:34.408846+00:00"
+    },
+    {
+      "kind": "fill",
+      "token": "APE",
+      "action": "buy",
+      "size_usd": 0.86,
+      "tx_hash": "0xMOCK796ba4d078edf66d",
+      "reason": "maintenance trade (min 1/day)",
+      "ts": "2026-06-18T23:06:34.423671+00:00"
     }
   ]
 }

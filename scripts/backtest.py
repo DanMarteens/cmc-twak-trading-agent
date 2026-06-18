@@ -25,6 +25,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from agent.agent import load_config, process_tick
 from agent.cmc_client import derive_ema_trend, derive_macd_state
+from agent.indicators import indicators
 from agent.decision import build_decider
 from agent.executor import MockExecutor
 from agent.logbook import DecisionLog
@@ -32,44 +33,6 @@ from agent.reporting import max_drawdown, sharpe_like, _returns
 from agent.signal_engine import Regime
 from agent.state import PortfolioState
 from datetime import datetime, timezone
-
-
-# ----- indicators (computed from price history) -------------------------------
-def ema(prices, n):
-    k = 2 / (n + 1)
-    out = [prices[0]]
-    for p in prices[1:]:
-        out.append(p * k + out[-1] * (1 - k))
-    return out
-
-
-def rsi(prices, n=14):
-    if len(prices) <= n:
-        return [50.0] * len(prices)
-    gains, losses = [0.0], [0.0]
-    for i in range(1, len(prices)):
-        d = prices[i] - prices[i - 1]
-        gains.append(max(d, 0.0))
-        losses.append(max(-d, 0.0))
-    out = [50.0] * len(prices)
-    avg_g = sum(gains[1:n + 1]) / n
-    avg_l = sum(losses[1:n + 1]) / n
-    for i in range(n, len(prices)):
-        if i > n:
-            avg_g = (avg_g * (n - 1) + gains[i]) / n
-            avg_l = (avg_l * (n - 1) + losses[i]) / n
-        rs = (avg_g / avg_l) if avg_l > 0 else 999
-        out[i] = 100 - 100 / (1 + rs)
-    return out
-
-
-def indicators(prices):
-    e7, e30 = ema(prices, 7), ema(prices, 30)
-    e12, e26 = ema(prices, 12), ema(prices, 26)
-    macd_line = [a - b for a, b in zip(e12, e26)]
-    signal = ema(macd_line, 9)
-    r = rsi(prices, 14)
-    return e7, e30, macd_line, signal, r
 
 
 def fetch_history(token, period, contracts, retries=2):
