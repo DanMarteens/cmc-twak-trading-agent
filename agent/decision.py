@@ -106,11 +106,62 @@ class RuleBasedDecider:
         return decisions
 
 
-# --- LLM decider ---------------------------------------------------------------
-class ClaudeDecider:
+# --- Rotation decider (cross-sectional momentum) -------------------------------
+class RotationDecider:
+    """Relative-strength rotation across the tradeable universe.
+
+    The edge most threshold bots miss: instead of waiting for absolute setups
+    per token, always hold the STRONGEST names by cross-sectional momentum, and
+    rotate to cash only in a clear risk-off regime. This captures upside in
+    trends, guarantees participation (trade cadence), and keeps the risk moat
+    (cash in downturns + the same stops/sizing downstream).
+
+      TREND_UP   -> hold top-K tokens with positive momentum
+      TREND_DOWN -> risk-off: rotate fully to cash (USDT)
+      CHOP       -> hold current positions (no churn, no forced cash)
+    """
+
     def __init__(self, cfg: dict):
         self.cfg = cfg
-        self.fallback = RuleBasedDecider(cfg)
+        d = cfg.get("decision", {})
+        self.k = d.get("rotation_top_k", 3)
+        self.min_mom = d.get("rotation_min_momentum", 0.05)
+        self.tradeable = set(cfg["twak"]["token_contracts"])
+
+    def decide(self, snapshot, signals: dict[str, TokenSignal], portfolio, risk_limits):
+        cand = [s for s in signals.values() if s.token in self.tradeable]
+        if not cand:
+            return []
+        regime = cand[0].regime
+        held = {t for t, q in portfolio["positions"].items() if q > 0 and t in self.tradeable}
+
+        if regime is Regime.CHOP:
+            return []                          # hold current; stops still run upstream
+
+        ranked = sorted(cand, key=lambda s: s.score, reverse=True)
+        if regime is Regime.TREND_DOWN:
+            targets = []                       # risk-off -> all cash
+        else:
+            targets = [s.token for s in ranked if s.score > self.min_mom][: self.k]
+
+        decisions = []
+        for t in held:                         # exit names no longer targeted
+            if t not in targets:
+                decisions.append(_dec(t, "close", 0.0, 0.7, f"rotate out ({regime.value})"))
+        per_name = min(self.cfg["risk"]["max_position_pct"], 1.0 / max(self.k, 1))
+        for s in ranked:                       # enter/keep targets
+            if s.token in targets and s.token not in held:
+                conf = min(0.95, 0.55 + abs(s.score) / 2)
+                decisions.append(_dec(s.token, "buy", per_name, conf,
+                                      f"rotate in: rank momentum={s.score} ({regime.value})"))
+        return decisions
+
+
+# --- LLM decider ---------------------------------------------------------------
+class ClaudeDecider:
+    def __init__(self, cfg: dict, fallback=None):
+        self.cfg = cfg
+        self.fallback = fallback or RuleBasedDecider(cfg)
         self._client = None
 
     def _client_lazy(self):
@@ -149,6 +200,8 @@ def _dec(token, action, size_pct, confidence, rationale):
 
 
 def build_decider(cfg: dict):
+    policy = cfg.get("decision", {}).get("policy", "threshold")
+    base = RotationDecider(cfg) if policy == "rotation" else RuleBasedDecider(cfg)
     if cfg.get("mode") == "live" and os.environ.get("ANTHROPIC_API_KEY"):
-        return ClaudeDecider(cfg)
-    return RuleBasedDecider(cfg)
+        return ClaudeDecider(cfg, fallback=base)
+    return base

@@ -81,7 +81,12 @@ regime:
   fear_extreme_low: 25
   fear_extreme_high: 75
 
-# --- Decision layer (F3) --------------------------------------------------
+# --- Decision policy (F3) -------------------------------------------------
+decision:
+  policy: rotation          # rotation | threshold
+  rotation_top_k: 3         # hold the K strongest tokens by momentum
+  rotation_min_momentum: 0.05  # only rotate into positive-momentum names
+
 llm:
   model: claude-sonnet-4-6      # hackathon Claude credits; sonnet for decisions
   max_tokens: 1500
@@ -105,13 +110,34 @@ twak:
   chain: bsc
   agent_address: "0x32A84F2cf8D55a8eC5414D7DC42b0D873A98AB19"
   competition_contract: "0x212c61b9b72c95d95bf29cf032f5e5635629aed5"  # BSC
-  # Trade targets = eligible (in the 149 list) AND have a BSC contract. NOTE:
-  # BTC/BTCB and BNB are NOT in the eligible list -> signal/regime only, never
-  # traded. USDT (in-scope) is the quote leg and resolves by symbol.
-  # Expand with more eligible liquid names using VERIFIED contracts only.
+  # Trade targets = eligible (149 list) AND verified BSC contract. Resolved via
+  # `twak search` (scripts/resolve_universe.py -> config/bsc_contracts.json) and
+  # curated to non-ambiguous liquid majors. BTC/BTCB and BNB are NOT eligible
+  # (signal/regime only). USDT (in-scope) is the quote leg (resolves by symbol).
+  # Rotation needs breadth; the risk gate's `twak risk` check screens each name.
   token_contracts:
-    CAKE: "0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82"
-    ETH:  "0x2170Ed0880ac9A755fd29B2688956BD959F933F8"   # Binance-Peg ETH
+    ETH:    "0x2170Ed0880ac9A755fd29B2688956BD959F933F8"
+    CAKE:   "0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82"
+    XRP:    "0x1D2F0da169ceB9fC7B3144628dB156f3F6c60dBE"
+    LINK:   "0xF8A0BF9cF54Bb92F17374d9e9A321E6a111a51bD"
+    LTC:    "0x4338665CBB7B2485A8855A139b75D5e34AB0DB94"
+    DOGE:   "0xbA2aE424d960c26247Dd6c32edC70B295c744C43"
+    ADA:    "0x3EE2200Efb3400fAbB9AacF31297cBdD1d435D47"
+    DOT:    "0x7083609fCE4d1d8Dc0C979AAb8c869Ea2C873402"
+    AAVE:   "0xfb6115445Bff7b52FeB98650C87f44907E58f802"
+    ATOM:   "0x0Eb3a705fc54725037CC9e008bDede697f62F335"
+    ETC:    "0x3d6545b08693daE087E957cb1180ee38B9e3c25E"
+    FIL:    "0x0D8Ce2A99Bb6e3B7Db580eD848240e4a0F9aE153"
+    INJ:    "0xa2B726B1145A4773F68593CF171187d8EBe4d495"
+    FET:    "0x031b41e504677879370e9DBcF937283A8691Fa7f"
+    SUSHI:  "0x947950BcC74888a40Ffa2593C5798F11Fc9124C4"
+    COMP:   "0x52CE071Bd9b1C4B00A0b92D298c512478CaD67e8"
+    SNX:    "0x9Ac983826058b8a9C7Aa1C9171441191232E8404"
+    APE:    "0x8f86a15EC17cb3369d8b3E666dAdBC11daA82b79"
+    AXS:    "0x715D400F88C167884bbCc41C5FeA407ed4D2f8A0"
+    LDO:    "0x986854779804799C1d68867F5E03e601E781e41b"
+    PENDLE: "0xb3Ed0A426155B79B898849803E3B36552f7ED507"
+    TWT:    "0x4B0F1812e5Df2A09796481Ff14017e6005508003"
   # password: read from OS keychain locally; set TWAK_WALLET_PASSWORD on a VPS.
 
 bnb_sdk:

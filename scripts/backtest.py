@@ -19,12 +19,13 @@ import json
 import os
 import subprocess
 import sys
+import time
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from agent.agent import load_config, process_tick
 from agent.cmc_client import derive_ema_trend, derive_macd_state
-from agent.decision import RuleBasedDecider
+from agent.decision import build_decider
 from agent.executor import MockExecutor
 from agent.logbook import DecisionLog
 from agent.reporting import max_drawdown, sharpe_like, _returns
@@ -71,34 +72,65 @@ def indicators(prices):
     return e7, e30, macd_line, signal, r
 
 
-def fetch_history(token, period, contracts):
+def fetch_history(token, period, contracts, retries=2):
     # BSC trade tokens need their contract; the benchmark (BTC) resolves by symbol
     ref = contracts.get(token)
     cmd = ["twak", "price", ref or token, "--history", period, "--json"]
     if ref:
         cmd += ["--chain", "bsc"]
-    out = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
-    data = json.loads(out.stdout[out.stdout.find("{"):])
-    return [(h["date"], h["price"]) for h in data.get("history", [])]
+    for _ in range(retries + 1):
+        try:
+            out = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
+            data = json.loads(out.stdout[out.stdout.find("{"):])
+            hist = [(h["date"], h["price"]) for h in data.get("history", [])]
+            if hist:
+                return hist
+        except Exception:
+            pass
+    return []
 
 
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--period", default="year")    # hour|day|week|month|year|all
     ap.add_argument("--cash", type=float, default=200.0)
+    ap.add_argument("--policy", choices=["rotation", "threshold"], default=None)
+    ap.add_argument("--universe", choices=["core", "resolved"], default="core")
+    ap.add_argument("--max", type=int, default=20, help="max tokens for resolved universe")
     ap.add_argument("--config", default="config.yaml")
     args = ap.parse_args()
 
     cfg = copy.deepcopy(load_config(args.config))
     cfg["risk"]["min_seconds_between_trades"] = 0   # bars are replayed fast
-    tradeable = list(cfg["twak"]["token_contracts"])     # ETH, CAKE
+    if args.policy:
+        cfg.setdefault("decision", {})["policy"] = args.policy
+
     bench = cfg["regime"]["benchmark"]                    # BTC
+    if args.universe == "resolved":
+        with open(os.path.join(os.path.dirname(__file__), "..",
+                               "config", "bsc_contracts.json")) as f:
+            res = json.load(f)
+        pairs = [(s, v["address"]) for s, v in res.items()
+                 if not v.get("stable") and not v.get("ambiguous")][: args.max]
+        cfg["twak"]["token_contracts"] = dict(pairs)
+    tradeable = list(cfg["twak"]["token_contracts"])
     tokens = [bench] + [t for t in tradeable if t != bench]
     cfg["whitelist"] = tokens + [cfg["quote_asset"]]
 
-    print(f"Fetching {args.period} history for {tokens} ...")
+    print(f"Policy={cfg['decision']['policy']} universe={args.universe} "
+          f"({len(tradeable)} tokens). Fetching {args.period} history ...")
     contracts = cfg["twak"]["token_contracts"]
-    series = {t: fetch_history(t, args.period, contracts) for t in tokens}
+    series = {}
+    for t in tokens:
+        h = fetch_history(t, args.period, contracts)
+        if len(h) >= 40:
+            series[t] = h
+        time.sleep(0.4)                              # be gentle on the data API
+    if bench not in series:
+        sys.exit(f"benchmark {bench} history unavailable (throttled?); retry")
+    tokens = [t for t in tokens if t in series]
+    cfg["twak"]["token_contracts"] = {t: contracts[t] for t in tokens if t in contracts}
+    cfg["whitelist"] = tokens + [cfg["quote_asset"]]
     n = min(len(v) for v in series.values())
     if n < 40:
         sys.exit(f"not enough history ({n} bars); try --period year")
@@ -113,7 +145,7 @@ def main():
     log = DecisionLog("logs/backtest.jsonl")
     state = PortfolioState(cash_usd=args.cash, initial_equity=args.cash,
                            peak_equity=args.cash, day_start_equity=args.cash)
-    decider, executor = RuleBasedDecider(cfg), MockExecutor(cfg)
+    decider, executor = build_decider(cfg), MockExecutor(cfg)
 
     warmup = 35
     for i in range(warmup, n):
@@ -140,7 +172,9 @@ def main():
     curve = state.equity_curve
     rets = _returns(curve)
     final = curve[-1][1] if curve else args.cash
-    bh = {t: prices[t][-1] / prices[t][warmup] - 1 for t in tradeable}   # buy&hold ref
+    trade_syms = [t for t in tokens if t != bench]
+    bh_vals = [prices[t][-1] / prices[t][warmup] - 1 for t in trade_syms]
+    bh_avg = sum(bh_vals) / len(bh_vals) if bh_vals else 0.0   # equal-weight buy&hold
 
     print("\n=== BACKTEST (real prices, real strategy code) ===")
     print(f"  bars:           {n - warmup}  ({args.period})")
@@ -150,7 +184,8 @@ def main():
           f"(DQ line {cfg['risk']['drawdown_dq_reference_pct']*100:.0f}%)")
     print(f"  sharpe-like:    {sharpe_like(rets):.3f}")
     print(f"  trades:         {state.trade_count_total}")
-    print(f"  buy&hold ref:   " + ", ".join(f"{t} {v*100:+.1f}%" for t, v in bh.items()))
+    print(f"  buy&hold ref:   equal-weight {bh_avg*100:+.2f}%  "
+          f"({len(trade_syms)} tokens)")
 
 
 if __name__ == "__main__":
