@@ -1,0 +1,20 @@
+[Unit]
+Description=CMC-TWAK Autonomous Trading Agent (BNB Hack Track 1)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=agent
+WorkingDirectory=/opt/cmc-twak-agent
+# Secrets: CMC_MCP_API_KEY, ANTHROPIC_API_KEY, TWAK_WALLET_PASSWORD
+EnvironmentFile=/opt/cmc-twak-agent/.env
+ExecStart=/opt/cmc-twak-agent/.venv/bin/python -m agent.agent
+Restart=always
+RestartSec=10
+# Idempotent state survives restarts; never double-trades (persist-before-send).
+StandardOutput=append:/opt/cmc-twak-agent/logs/agent.out
+StandardError=append:/opt/cmc-twak-agent/logs/agent.err
+
+[Install]
+WantedBy=multi-user.target
