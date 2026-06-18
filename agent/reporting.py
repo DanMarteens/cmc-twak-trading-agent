@@ -89,7 +89,7 @@ def report(cfg: dict) -> dict:
         "sharpe_like": round(sharpe_like(rets), 3),
         "realized_pnl": round(state.get("realized_pnl", 0), 2),
         "total_trades": state.get("trade_count_total", 0),
-        "min_trades_required": cfg["risk"]["min_trades_total"],
+        "min_trades_required": cfg["risk"]["min_trades_per_week"],
         "fills": len(fills),
         "closes": len(closes),
         "blocked_trades": len(blocks),

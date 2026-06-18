@@ -8,9 +8,12 @@
 mode: dry_run            # dry_run | live   (live actually signs txs via TWAK)
 
 # --- Universe -------------------------------------------------------------
-# BSC-liquid whitelist. BTC/ETH used mainly for regime + as macro signal.
+# IMPORTANT: only the 149 eligible BEP-20 tokens count (off-list trades ignored).
+# Verify every symbol against the official list before live; on BSC, BTC/ETH are
+# pegged (BTCB, ETH). BTC is kept here only as the regime benchmark signal.
 whitelist: [BNB, CAKE, ETH, BTC, USDT]
 quote_asset: USDT        # cash leg
+eligible_tokens_file: config/eligible_tokens.txt   # populate from the 149-list
 
 # --- Loop -----------------------------------------------------------------
 poll_interval_minutes: 15
@@ -30,10 +33,17 @@ risk:
   drawdown_hard_stop_pct: 0.20  # peak-to-now; >=20% -> CLOSE-ONLY (never near 30% DQ)
   drawdown_dq_reference_pct: 0.30  # the judges' line, for logging headroom only
 
-  # Activity corridor: min trades to qualify, cap to avoid fee churn
-  min_trades_total: 10          # competition minimum over the live window
-  max_trades_per_day: 12        # avoid simulated-tx-cost bleed
+  # Activity corridor (per official FAQ): min 1 trade/day, 7 over the week.
+  # Cap the top end to avoid simulated-tx-cost bleed.
+  min_trades_per_day: 1
+  min_trades_per_week: 7
+  force_daily_trade: true       # if a UTC day has 0 trades, make 1 maintenance trade
+  max_trades_per_day: 12
   min_seconds_between_trades: 120
+
+  # "Keep capital deployed": any hour starting with a sub-$1 portfolio scores 0%.
+  # Never let total portfolio value approach $1; keep a minimum in-scope holding.
+  min_portfolio_usd: 5.0        # hard floor we defend well above the $1 cutoff
 
   # Execution safety
   max_slippage_pct: 0.01        # 1% slippage cap on swaps
