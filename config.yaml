@@ -56,10 +56,10 @@ risk:
   max_slippage_pct: 0.01        # 1% slippage cap on swaps
   max_token_risk_score: 60      # TWAK token risk score (0=safe..100=risky); block above
 
-  # Perps (BSC perps allowed by Track 1 — leverage + shorting = our edge)
-  perps_enabled: true
-  max_leverage: 2.0             # conservative; shorting matters more than size
-  perps_only_in_trend: true     # only open perp positions in a clear regime, not chop
+  # Perps: NOT available via TWAK — the CLI is spot-swap only (verified v0.19.1).
+  # So the agent is long/cash only: downtrends -> rotate to USDT, never short.
+  # Edge now = regime-aware capital preservation + selection + not overtrading.
+  perps_enabled: false
 
 # --- Signal engine (F2) — deterministic, judge-reproducible ---------------
 signal:
@@ -102,7 +102,15 @@ cmc:
 
 twak:
   agent_wallet: true            # agent wallet mode = autonomous signing under rules
-  network: bsc
+  chain: bsc
+  agent_address: "0x32A84F2cf8D55a8eC5414D7DC42b0D873A98AB19"
+  # BSC token contracts (destination tokens need a 0x address; USDT resolves by
+  # symbol as the quote/source leg). BNB is the gas reserve, not a trade target.
+  token_contracts:
+    CAKE: "0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82"
+    ETH:  "0x2170Ed0880ac9A755fd29B2688956BD959F933F8"   # Binance-Peg ETH
+    BTCB: "0x7130d2A12B9BCbFAe4f2634d864A1Ee1Ce3Ead9c"   # Bitcoin BEP20
+  # password: read from OS keychain locally; set TWAK_WALLET_PASSWORD on a VPS.
 
 bnb_sdk:
   agent_name: cmc-twak-trading-agent

@@ -8,11 +8,11 @@ reconciles on restart instead of double-swapping.
 
 Two implementations:
   * MockExecutor — simulates fills with configurable slippage; updates state.
-  * TwakExecutor — shells out to the `twak` CLI in agent-wallet mode.
+  * TwakExecutor — shells out to the `twak` CLI (verified v0.19.1).
 
-The real CLI flags (`twak swap ...`, perps open/close) must be confirmed against
-the installed TWAK version; the command construction is isolated in _swap_cmd /
-_perp_cmd so only those need adjusting.
+TWAK is SPOT-ONLY (no perps), so the agent is long/cash: buys spend USDT via
+`twak swap --usd`, closes swap the held token back to USDT. Destination tokens
+are BSC contract addresses; USDT resolves by symbol; slippage is a percent.
 """
 
 from __future__ import annotations
@@ -86,31 +86,61 @@ class MockExecutor:
         return tx
 
 
+def _lead_float(s, default: float = 0.0) -> float:
+    """First number out of strings like '7.534575 CAKE' -> 7.534575."""
+    if isinstance(s, (int, float)):
+        return float(s)
+    if not isinstance(s, str):
+        return default
+    tok = s.strip().split()
+    try:
+        return float(tok[0].replace(",", ""))
+    except (ValueError, IndexError):
+        return default
+
+
 class TwakExecutor:
-    """Real execution via the `twak` CLI in agent-wallet mode."""
+    """Real SPOT execution via the `twak` CLI (verified v0.19.1, spot-only).
+
+    Buys spend a USD-equivalent of USDT (`--usd`); closes/sells swap the held
+    token amount back to USDT. Destination tokens are passed as BSC contract
+    addresses; USDT resolves by symbol. Slippage is a percent ("1" = 1%).
+    """
 
     def __init__(self, cfg: dict):
         self.cfg = cfg
-        self.slippage = cfg["risk"]["max_slippage_pct"]
-        self.quote = cfg["quote_asset"]
+        self.chain = cfg["twak"]["chain"]
+        self.quote = cfg["quote_asset"]                       # USDT (symbol leg)
+        self.slip = str(cfg["risk"]["max_slippage_pct"] * 100)  # 0.01 -> "1"
+        self.contracts = cfg["twak"]["token_contracts"]
+
+    def _addr(self, token: str) -> str:
+        addr = self.contracts.get(token)
+        if not addr:
+            raise RuntimeError(f"no BSC contract for {token} (not a trade target)")
+        return addr
 
     def _run(self, args: list[str]) -> dict:
-        proc = subprocess.run(["twak", *args, "--json"], capture_output=True, text=True, timeout=120)
+        proc = subprocess.run(["twak", *args, "--json"], capture_output=True,
+                              text=True, timeout=180)
         if proc.returncode != 0:
-            raise RuntimeError(f"twak failed: {proc.stderr.strip()}")
-        return json.loads(proc.stdout)
+            raise RuntimeError(f"twak failed: {proc.stderr.strip() or proc.stdout.strip()}")
+        # twak prints a human line before the JSON block; take the JSON object.
+        out = proc.stdout
+        brace = out.find("{")
+        return json.loads(out[brace:]) if brace >= 0 else {}
 
-    # --- command construction (CONFIRM flags against installed twak version) ---
-    def _swap_cmd(self, frm, to, amount_usd) -> list[str]:
-        return ["swap", "--from", frm, "--to", to, "--amount-usd", str(amount_usd),
-                "--slippage", str(self.slippage)]
+    def _buy_cmd(self, token, size_usd, quote_only=False) -> list[str]:
+        cmd = ["swap", "--usd", str(round(size_usd, 6)), self.quote, self._addr(token),
+               "--chain", self.chain, "--slippage", self.slip]
+        return cmd + (["--quote-only"] if quote_only else [])
 
-    def _perp_cmd(self, token, side, size_usd, lev) -> list[str]:
-        return ["perp", side, "--market", f"{token}-PERP", "--size-usd", str(size_usd),
-                "--leverage", str(lev), "--slippage", str(self.slippage)]
+    def _sell_cmd(self, token, qty) -> list[str]:
+        return ["swap", str(qty), self._addr(token), self.quote,
+                "--chain", self.chain, "--slippage", self.slip]
 
-    def quote_only(self, frm, to, amount_usd) -> dict:
-        return self._run(self._swap_cmd(frm, to, amount_usd) + ["--quote-only"])
+    def quote_only(self, token, size_usd) -> dict:
+        return self._run(self._buy_cmd(token, size_usd, quote_only=True))
 
     def execute(self, *, tick_id, token, action, size_usd, price, state, log) -> Optional[str]:
         oid = make_order_id(tick_id, token, action)
@@ -120,29 +150,30 @@ class TwakExecutor:
         state.begin_order(Order(client_order_id=oid, token=token, action=action,
                                 size_usd=size_usd, ts=utc_now_iso()))
 
-        # Quote check before sending (slippage/MEV guard).
         if action == "buy":
-            q = self.quote_only(self.quote, token, size_usd)
+            q = self.quote_only(token, size_usd)              # slippage/MEV guard
             log.event("quote", token=token, quote=q)
-            res = self._run(self._swap_cmd(self.quote, token, size_usd))
-            _apply_spot_buy(state, token, size_usd, _fill_px(res, price))
+            res = self._run(self._buy_cmd(token, size_usd))
+            out_tokens = _lead_float(res.get("output"))
+            fill_px = (size_usd / out_tokens) if out_tokens else price
+            _apply_spot_buy(state, token, size_usd, fill_px)
         elif action in ("close", "sell"):
-            res = self._run(self._swap_cmd(token, self.quote, size_usd))
-            _apply_close(state, token, _fill_px(res, price))
-        elif action == "short":
-            res = self._run(self._perp_cmd(token, "open-short", size_usd, self.cfg["risk"]["max_leverage"]))
-            _apply_short_open(state, token, size_usd, _fill_px(res, price), self.cfg["risk"]["max_leverage"])
+            pos = state.positions.get(token)
+            if not pos or pos.qty <= 0:
+                return None
+            res = self._run(self._sell_cmd(token, pos.qty))
+            usdt_out = _lead_float(res.get("output"))
+            fill_px = (usdt_out / pos.qty) if pos.qty else price
+            _apply_close(state, token, fill_px)
         else:
+            log.event("unsupported_action", token=token, action=action,
+                      note="spot-only executor (perps disabled)")
             return None
 
-        tx = res.get("tx_hash") or res.get("hash", "")
-        state.complete_order(oid, tx, _fill_px(res, price))
+        tx = res.get("txHash") or res.get("hash") or res.get("tx_hash", "")
+        state.complete_order(oid, tx, _lead_float(res.get("output")) or price)
         state.last_trade_ts = time.time()
         return tx
-
-
-def _fill_px(res: dict, fallback: float) -> float:
-    return float(res.get("fill_price") or res.get("price") or fallback)
 
 
 def build_executor(cfg: dict):
