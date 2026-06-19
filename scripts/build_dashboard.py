@@ -93,13 +93,15 @@ def build_data(with_wallet=True, with_market=True):
         pass
     mode = cfg.get("mode", "dry_run")
     live = mode in ("live", "paper")
+    curve = []
     if live:
         st = json.load(open(os.path.join(ROOT, cfg["paths"]["state_file"])))
         curve = st.get("equity_curve", [])
+    if live and len(curve) >= 10:        # enough live points -> show the live curve
         lbl = "Live equity" if mode == "live" else "Paper equity · real signals"
         chart = {"dates": [c[0][:10] for c in curve], "equity": [round(c[1], 4) for c in curve],
                  "benchmark": [], "label": lbl}
-    else:
+    else:                                # not enough live data yet -> show track record
         chart = {"dates": bt["dates"], "equity": bt["equity"], "benchmark": bt["benchmark"],
                  "label": "Strategy backtest · 1y real prices"}
     return {
