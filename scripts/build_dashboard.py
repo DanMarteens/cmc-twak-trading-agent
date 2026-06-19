@@ -22,6 +22,13 @@ from collections import Counter
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 USDT = "0x55d398326f99059fF775485246999027B3197955"
+_TW = "https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/smartchain"
+
+
+def _logo(sym, contract):
+    if sym == "BNB":
+        return _TW + "/info/logo.png"
+    return f"{_TW}/assets/{contract}/logo.png" if contract else ""
 
 
 def _twak(args):
@@ -39,12 +46,14 @@ def _wallet(cfg):
     u = _twak(["balance", "--address", addr, "--token", USDT, "--chain", "bsc"])
     if u and "available" in u:
         usd = float(u.get("totalUsd", 0) or 0)
-        holdings.append({"sym": "USDT", "amount": round(float(u["available"]), 2), "usd": round(usd, 2)})
+        holdings.append({"sym": "USDT", "amount": round(float(u["available"]), 2), "usd": round(usd, 2),
+                         "logo": _logo("USDT", USDT)})
         total += usd
     b = _twak(["wallet", "balance", "--chain", "bsc"])
     if b and "available" in b:
         usd = float(b.get("totalUsd", 0) or 0)
-        holdings.append({"sym": "BNB", "amount": round(float(b["available"]), 5), "usd": round(usd, 2)})
+        holdings.append({"sym": "BNB", "amount": round(float(b["available"]), 5), "usd": round(usd, 2),
+                         "logo": _logo("BNB", None)})
         total += usd
     try:
         st = json.load(open(os.path.join(ROOT, cfg["paths"]["state_file"])))
@@ -53,7 +62,8 @@ def _wallet(cfg):
             r = _twak(["balance", "--address", addr, "--token", at, "--chain", "bsc"]) if at else None
             if r and float(r.get("available", 0) or 0) > 0:
                 usd = float(r.get("totalUsd", 0) or 0)
-                holdings.append({"sym": sym, "amount": round(float(r["available"]), 4), "usd": round(usd, 2)})
+                holdings.append({"sym": sym, "amount": round(float(r["available"]), 4), "usd": round(usd, 2),
+                                 "logo": _logo(sym, at)})
                 total += usd
     except Exception:
         pass
@@ -71,7 +81,9 @@ def _market(cfg):
         sigs = score_universe(snap, cfg)
         any_d = next(iter(snap.values()))
         ranked = sorted(sigs.values(), key=lambda s: s.score, reverse=True)
-        top = [{"sym": s.token, "score": round(s.score, 3)} for s in ranked[:8]]
+        tc = cfg["twak"]["token_contracts"]
+        top = [{"sym": s.token, "score": round(s.score, 3), "logo": _logo(s.token, tc.get(s.token))}
+               for s in ranked[:8]]
         return {"regime": regime, "fg": round(float(any_d.get("fear_greed_index", 50))),
                 "dom": round(float(any_d.get("btc_dominance", 54)), 1), "leaderboard": top}
     except Exception:
@@ -172,6 +184,9 @@ background-attachment:fixed;padding:28px 20px;-webkit-font-smoothing:antialiased
 .rowline{display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid rgba(255,255,255,.05)}
 .rowline:last-child{border:0}
 .dotk{width:7px;height:7px;border-radius:50%;background:var(--b);display:inline-block;margin-right:8px}
+.ico{width:22px;height:22px;border-radius:50%;background:#19202f;object-fit:cover;vertical-align:middle;border:1px solid var(--bd)}
+.ico.sm{width:17px;height:17px}
+.aset{display:flex;align-items:center;gap:9px;font-weight:600}
 .num{font-variant-numeric:tabular-nums}
 .pos{color:var(--g)}.neg{color:var(--r)}.acc{color:var(--b)}
 .ret{font-size:34px;font-weight:800;letter-spacing:-.6px;margin:7px 0 2px}
@@ -268,7 +283,8 @@ const pv=D.portfolio.total_usd;
 if(pv!=null){const t0=performance.now();(function a(n){let p=Math.min((n-t0)/750,1);p=1-Math.pow(1-p,3);
  $('pv').textContent='$'+(pv*p).toFixed(2);if(p<1)requestAnimationFrame(a);})(t0);}else $('pv').textContent='—';
 $('pvsub').textContent=D.portfolio.holdings.length?'across '+D.portfolio.holdings.length+' assets':'fund wallet to begin';
-$('holds').innerHTML=D.portfolio.holdings.map(h=>`<div class="rowline"><span><i class="dotk"></i>${h.sym}</span>
+$('holds').innerHTML=D.portfolio.holdings.map(h=>`<div class="rowline"><span class="aset">
+ <img class="ico" src="${h.logo}" onerror="this.outerHTML='<i class=dotk></i>'"/>${h.sym}</span>
  <span class="sub num">${h.amount} · $${h.usd.toFixed(2)}</span></div>`).join('');
 
 const t=D.track,edge=(t.return_pct-t.buyhold_pct);
@@ -289,7 +305,8 @@ if(mk){const[col,bg,nm]=REG[mk.regime]||REG.chop;
   <div style="margin-top:15px"><div class="lab">Fear &amp; Greed — <b style="color:${col}">${mk.fg} · ${fl}</b></div>
    <div class="fgbar"><i style="left:${mk.fg}%"></i></div></div>`;
  $('lead').innerHTML=mk.leaderboard.map((l,i)=>{const w=Math.min(50,Math.abs(l.score)*50),p=l.score>=0;
-   return `<div class="lr"><span class="rk">${i+1}</span><span class="tk">${l.sym}</span>
+   return `<div class="lr"><span class="rk">${i+1}</span>
+   <img class="ico sm" src="${l.logo}" onerror="this.style.visibility='hidden'"/><span class="tk">${l.sym}</span>
    <span class="bar"><b style="${p?'left:50%':'right:50%'};width:${w}%;background:${p?'var(--g)':'var(--r)'}"></b></span>
    <span class="sc num">${l.score>=0?'+':''}${l.score.toFixed(2)}</span></div>`;}).join('');
 }else $('mrow').style.display='none';
