@@ -65,6 +65,7 @@ def main():
 
     cfg = copy.deepcopy(load_config(args.config))
     cfg["risk"]["min_seconds_between_trades"] = 0   # bars are replayed fast
+    cfg["paths"]["state_file"] = "state/_backtest.json"   # ISOLATED: never clobber the live/paper state
     if args.policy:
         cfg.setdefault("decision", {})["policy"] = args.policy
 
