@@ -25,7 +25,7 @@ rpc:
 # --- Risk gate (F4) — enforced on EVERY trade, logged on block ------------
 risk:
   # Position sizing
-  max_position_pct: 0.20        # max single position as frac of cash on entry
+  max_position_pct: 0.34        # max single position as frac of cash on entry
   max_concentration_pct: 0.40   # max single asset as frac of total equity
   min_confidence: 0.55          # LLM confidence below this -> hold
 
@@ -86,7 +86,7 @@ regime:
 # --- Decision policy (F3) -------------------------------------------------
 decision:
   policy: rotation          # rotation | threshold
-  rotation_top_k: 5         # hold the K strongest tokens by momentum
+  rotation_top_k: 3         # hold the K strongest tokens by momentum
   rotation_min_momentum: 0.05  # only rotate into positive-momentum names
 
 llm:
