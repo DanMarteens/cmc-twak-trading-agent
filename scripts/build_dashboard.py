@@ -210,6 +210,7 @@ def build_data(with_wallet=True, with_market=True):
         "activity": [
             {"kind": r.get("kind"), "token": r.get("token", ""), "action": r.get("action", ""),
              "reason": (r.get("reason") or r.get("note") or "")[:70], "tx": r.get("tx_hash") or r.get("tx"),
+             "realized": r.get("realized"),
              "logo": _logo(r.get("token", ""), cfg["twak"]["token_contracts"].get(r.get("token", ""))),
              "ts": (r.get("ts") or "")[11:16]}
             for r in rows if r.get("kind") in ("fill", "blocked", "x402", "position_stop", "kill_switch")
@@ -479,7 +480,11 @@ if(mk){const[col,bg,nm]=REG[mk.regime]||REG.chop;
 
 // recent activity / decision log
 function actClean(a){
- if(a.kind==='fill'){const m=(a.reason||'').match(/\$[\d.]+/);return (a.action==='buy'?'entered':'exited')+(m?' '+m[0]:'');}
+ if(a.kind==='fill'){
+  if(a.action==='buy'){const m=(a.reason||'').match(/\$[\d.]+/);return 'entered'+(m?' '+m[0]:'');}
+  const r=a.realized;            // realized P&L on the close — the real win/loss
+  if(r!=null&&r!==0){const g=r>=0;return 'exited <b style="color:'+(g?'var(--g)':'var(--r)')+'">'+(g?'+':'−')+'$'+Math.abs(r).toFixed(2)+'</b>';}
+  return 'exited';}
  if(a.kind==='blocked'){const r=a.reason||'';
   if(r.includes('min_seconds'))return 'rate-limited';
   if(r.includes('daily_pause'))return 'daily pause (risk-off)';

@@ -101,11 +101,14 @@ def _x402_signal(cfg, log) -> None:
 def _exec_and_log(executor, state, cfg, tick_id, token, action, size_usd, price, log, reason, now=None) -> None:
     """Persist-before-send, execute, log fill or error, persist again."""
     state.save(cfg["paths"]["state_file"])      # idempotency: record intent first
+    before = state.realized_pnl
     try:
         tx = executor.execute(tick_id=tick_id, token=token, action=action,
                               size_usd=size_usd, price=price, state=state, log=log, now=now)
+        # realized P&L booked by this trade (closes/sells); ~0 for opens
+        realized = round(state.realized_pnl - before, 4)
         log.event("fill", token=token, action=action, size_usd=size_usd,
-                  tx_hash=tx, reason=reason)
+                  tx_hash=tx, reason=reason, realized=realized)
     except Exception as e:
         log.event("exec_error", token=token, action=action, error=str(e))
     finally:
