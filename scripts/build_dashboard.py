@@ -194,6 +194,18 @@ def build_data(with_wallet=True, with_market=True):
                  "maxdd_pct": bt["kpis"]["max_drawdown_pct"], "dq_pct": bt["kpis"]["dq_pct"],
                  "trades": bt["kpis"]["trades"], "tokens": ntok}
         track_source = "backtest"
+    # open positions with entry -> current price -> unrealized P&L
+    positions = []
+    if live and st.get("positions"):
+        mp = (market or {}).get("prices", {}) or {}
+        for tok, p in st["positions"].items():
+            entry = p.get("avg_price", 0) or 0
+            now = mp.get(tok) or entry
+            qty = p.get("qty", 0) or 0
+            positions.append({"token": tok, "entry": entry, "now": now,
+                              "pnl": round((now / entry - 1) * 100, 2) if entry else 0.0,
+                              "value": round(qty * now, 2),
+                              "logo": _logo(tok, cfg["twak"]["token_contracts"].get(tok))})
     kill = cfg["risk"]["drawdown_kill_pct"]
     posture = "Aggressive" if kill >= 0.24 else "Balanced" if kill >= 0.18 else "Defensive"
     prov = _llm_provider()
@@ -205,6 +217,7 @@ def build_data(with_wallet=True, with_market=True):
         "market": market,
         "track": track, "track_source": track_source,
         "since": curve[0][0] if (live and curve) else None,
+        "positions": positions,
         "reasoning": [{"token": r.get("token"), "action": r.get("action"),
                        "rationale": (r.get("rationale") or "")[:150]}
                       for r in rows if r.get("kind") == "decision"][-3:][::-1],
@@ -350,6 +363,14 @@ background-attachment:fixed;padding:40px 20px 32px;-webkit-font-smoothing:antial
 .rz .rzt{width:118px;flex:none;font-weight:600}
 .rz .rzr{flex:1;color:var(--mut);line-height:1.5}
 @media(max-width:620px){.rz{flex-direction:column;gap:3px}.rz .rzt{width:auto}}
+/* open positions */
+.po{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.04);font-size:13px}
+.po:last-child{border:0}
+.po .pol{display:flex;align-items:center;gap:9px;width:88px;font-weight:600}
+.po .poe{flex:1;color:var(--mut);font-variant-numeric:tabular-nums}
+.po .pnl{width:66px;text-align:right;font-weight:700;font-variant-numeric:tabular-nums}
+.po .pov{width:78px;text-align:right;color:var(--mut);font-variant-numeric:tabular-nums}
+@media(max-width:620px){.po .pov{display:none}}
 /* activity */
 .act{display:flex;align-items:center;gap:11px;padding:9px 0;border-bottom:1px solid rgba(255,255,255,.04);font-size:12px}
 .act:last-child{border:0}
@@ -400,6 +421,11 @@ background-attachment:fixed;padding:40px 20px 32px;-webkit-font-smoothing:antial
   </div>
 </div>
 
+<div class="card" id="poscard">
+  <div class="ph">Open positions <span id="posmeta"></span></div>
+  <div id="positions"></div>
+</div>
+
 <div class="card">
   <div class="ph">Performance <span id="trk"></span></div>
   <div class="trgrid">
@@ -446,6 +472,7 @@ background-attachment:fixed;padding:40px 20px 32px;-webkit-font-smoothing:antial
 const D=/*DATA*/, $=i=>document.getElementById(i);
 // token icon missing on the CDN -> clean letter avatar (no blank gaps)
 function fbk(el,s){el.outerHTML='<span class="ico sm lt">'+(s||'?').slice(0,3)+'</span>';}
+const fmtpx=v=>v>=1?'$'+(+v).toFixed(2):'$'+(+v||0).toPrecision(3);
 const REG={trend_up:['#34d399','rgba(52,211,153,.13)','uptrend'],trend_down:['#fb7185','rgba(251,113,133,.13)','downtrend'],chop:['#fbbf63','rgba(251,191,99,.13)','chop']};
 $('mode').textContent={live:'LIVE',paper:'PAPER · real signals',dry_run:'ARMED'}[D.mode]||'ARMED';
 const ago=Math.max(0,Math.round(Date.now()/1000-D.generated_ts));
@@ -493,7 +520,7 @@ if(mk){const[col,bg,nm]=REG[mk.regime]||REG.chop;
     <div class="cell"><div class="lab">Bullish now</div><div class="mkv num"><b class="pos">${mk.bullish}</b> / ${mk.total}</div></div>
   </div>`;
  $('lead').innerHTML=mk.leaderboard.map((l,i)=>{const p=l.score>=0,c=p?'var(--g)':'var(--r)';
-   const px=l.price>=1?('$'+l.price.toFixed(2)):('$'+(+l.price||0).toPrecision(2));
+   const px=fmtpx(l.price);
    return `<div class="lr"><span class="rk">${i+1}</span>
    <img class="ico sm" src="${l.logo}" onerror="fbk(this,'${l.sym}')"/><span class="tk">${l.sym}</span>
    <span class="px">${px}</span>
@@ -507,6 +534,16 @@ if(D.reasoning&&D.reasoning.length){
   const c=a==='buy'?'var(--g)':(a==='sell'||a==='close')?'var(--b)':'var(--mut)';
   return `<div class="rz"><span class="rzt"><b style="color:${c}">${a.toUpperCase()}</b> ${r.token||''}</span><span class="rzr">${r.rationale||''}</span></div>`;}).join('');
 }else $('rcard').style.display='none';
+
+// open positions: entry price -> current price -> unrealized P&L
+if(D.positions&&D.positions.length){
+ $('posmeta').textContent=D.positions.length+' open · entry → now';
+ $('positions').innerHTML=D.positions.map(p=>{const up=p.pnl>=0,c=up?'var(--g)':'var(--r)';
+  return `<div class="po"><span class="pol"><img class="ico sm" src="${p.logo}" onerror="fbk(this,'${p.token}')"/><b>${p.token}</b></span>`
+   +`<span class="poe">${fmtpx(p.entry)} → ${fmtpx(p.now)}</span>`
+   +`<span class="pnl" style="color:${c}">${up?'+':''}${p.pnl}%</span>`
+   +`<span class="pov">$${p.value.toFixed(2)}</span></div>`;}).join('');
+}else $('poscard').style.display='none';
 
 // recent activity / decision log
 function actClean(a){
