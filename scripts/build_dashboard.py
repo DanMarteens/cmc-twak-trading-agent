@@ -350,7 +350,7 @@ const ago=Math.max(0,Math.round(Date.now()/1000-D.generated_ts));
 $('beat').textContent='updated '+(ago<90?ago+'s':Math.round(ago/60)+'m')+' ago';
 $('chips').innerHTML=[`<span class="chip on">🟢 registered on-chain</span>`,
  `<span class="chip">ERC-8004 <b>#${D.agent_id}</b></span>`,
- `<span class="chip"><b>${D.track.tokens}</b> eligible tokens</span>`].join('');
+ `<span class="chip"><b>${D.track.tokens}</b> / 149 eligible</span>`].join('');
 
 const pv=D.portfolio.total_usd;
 if(pv!=null){const t0=performance.now();(function a(n){let p=Math.min((n-t0)/750,1);p=1-Math.pow(1-p,3);
@@ -362,7 +362,7 @@ $('holds').innerHTML=D.portfolio.holdings.map(h=>`<div class="hchip">
 
 const t=D.track,edge=(t.return_pct-t.buyhold_pct);
 $('ret').textContent=(t.return_pct>=0?'+':'')+t.return_pct+'%';$('ret').className='ret num '+(t.return_pct>=0?'pos':'neg');
-$('vsmkt').innerHTML=`<b class="pos">+${edge.toFixed(0)} pts</b> better than holding the same tokens`;
+$('vsmkt').innerHTML=`<b class="pos">+${edge.toFixed(0)} pts</b> vs market`;
 $('dd').textContent=t.maxdd_pct+'%';$('hr').textContent=(t.dq_pct-t.maxdd_pct).toFixed(0)+'%';$('tr').textContent=t.trades;
 (function(){const ar=Math.abs(t.return_pct),mr=Math.abs(t.buyhold_pct),mx=Math.max(ar,mr,1);
  $('cmp').innerHTML=`
@@ -377,8 +377,7 @@ const mk=D.market;
 if(mk){const[col,bg,nm]=REG[mk.regime]||REG.chop;
  const fl=mk.fg<25?'Extreme fear':mk.fg<45?'Fear':mk.fg<55?'Neutral':mk.fg<75?'Greed':'Extreme greed';
  $('market').innerHTML=`
-  <div class="mtop"><span class="regime" style="color:${col};background:${bg}">${nm}</span>
-    <span class="sub">market regime, read from CMC Agent Hub</span></div>
+  <div class="mtop"><span class="regime" style="color:${col};background:${bg}">${nm}</span></div>
   <div class="fgblock"><div class="lab">Fear &amp; Greed — <b style="color:${col}">${mk.fg} · ${fl}</b></div>
     <div class="fgbar"><i style="left:${mk.fg}%"></i></div></div>
   <div class="mstats">
