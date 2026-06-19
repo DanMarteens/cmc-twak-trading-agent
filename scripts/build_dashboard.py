@@ -83,9 +83,11 @@ def _market(cfg):
         ranked = sorted(sigs.values(), key=lambda s: s.score, reverse=True)
         tc = cfg["twak"]["token_contracts"]
         top = [{"sym": s.token, "score": round(s.score, 3), "logo": _logo(s.token, tc.get(s.token))}
-               for s in ranked[:8]]
+               for s in ranked[:9]]
+        bullish = sum(1 for s in sigs.values() if s.score > 0)
         return {"regime": regime, "fg": round(float(any_d.get("fear_greed_index", 50))),
-                "dom": round(float(any_d.get("btc_dominance", 54)), 1), "leaderboard": top}
+                "dom": round(float(any_d.get("btc_dominance", 54)), 1),
+                "bullish": bullish, "total": len(sigs), "leaderboard": top}
     except Exception:
         return None
 
@@ -167,7 +169,12 @@ background-attachment:fixed;padding:28px 20px;-webkit-font-smoothing:antialiased
  border:1px solid var(--bd);border-radius:18px;padding:20px;backdrop-filter:blur(18px);
  -webkit-backdrop-filter:blur(18px);box-shadow:0 8px 36px rgba(0,0,0,.32)}
 .g2{display:grid;grid-template-columns:1.12fr 1fr;gap:14px;align-items:start}
-@media(max-width:840px){.g2{grid-template-columns:1fr}}
+.g2c{display:grid;grid-template-columns:1.7fr 1fr;gap:14px;align-items:start}
+@media(max-width:840px){.g2,.g2c{grid-template-columns:1fr}}
+.mkt{display:flex;align-items:center;gap:26px;flex-wrap:wrap}
+.mkt .it{display:flex;flex-direction:column;gap:5px}
+.mkt .fg{flex:1;min-width:230px}
+.mkv{font-size:17px;font-weight:700}
 .lab{font-size:10.5px;letter-spacing:.7px;text-transform:uppercase;color:var(--mut);font-weight:600}
 .head{display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap}
 .title{font-size:18px;font-weight:700;display:flex;align-items:center;gap:10px}
@@ -242,21 +249,21 @@ background-attachment:fixed;padding:28px 20px;-webkit-font-smoothing:antialiased
   </div>
 </div>
 
-<div class="g2" id="mrow">
+<div class="card" id="mcard">
+  <div class="ph">Live market read <span>CMC Agent Hub</span></div>
+  <div id="market"></div>
+</div>
+
+<div class="g2c">
   <div class="card">
-    <div class="ph">Live market read <span>CMC Agent Hub</span></div>
-    <div id="market"></div>
+    <div class="ph"><span id="clab"></span><span id="cmeta"></span></div>
+    <div class="cw" id="cw"><div class="tip" id="tip"></div></div>
+    <div class="lg" id="lg"></div>
   </div>
   <div class="card">
     <div class="ph">Momentum leaderboard <span>now</span></div>
     <div id="lead"></div>
   </div>
-</div>
-
-<div class="card">
-  <div class="ph"><span id="clab"></span><span id="cmeta"></span></div>
-  <div class="cw" id="cw"><div class="tip" id="tip"></div></div>
-  <div class="lg" id="lg"></div>
 </div>
 
 <div class="card strip">
@@ -299,17 +306,19 @@ $('aid').textContent='#'+D.agent_id;$('addr').textContent=D.address.slice(0,6)+'
 const mk=D.market;
 if(mk){const[col,bg,nm]=REG[mk.regime]||REG.chop;
  const fl=mk.fg<25?'Extreme fear':mk.fg<45?'Fear':mk.fg<55?'Neutral':mk.fg<75?'Greed':'Extreme greed';
- $('market').innerHTML=`<div style="display:flex;align-items:center;gap:10px">
+ $('market').innerHTML=`<div class="mkt">
    <span class="regime" style="color:${col};background:${bg}">${nm}</span>
-   <span class="sub">BTC dominance <b style="color:var(--tx)">${mk.dom}%</b></span></div>
-  <div style="margin-top:15px"><div class="lab">Fear &amp; Greed — <b style="color:${col}">${mk.fg} · ${fl}</b></div>
-   <div class="fgbar"><i style="left:${mk.fg}%"></i></div></div>`;
+   <div class="it fg"><div class="lab">Fear &amp; Greed — <b style="color:${col}">${mk.fg} · ${fl}</b></div>
+     <div class="fgbar"><i style="left:${mk.fg}%"></i></div></div>
+   <div class="it"><div class="lab">BTC dominance</div><div class="mkv num">${mk.dom}%</div></div>
+   <div class="it"><div class="lab">Bullish now</div><div class="mkv num"><b class="pos">${mk.bullish}</b> / ${mk.total}</div></div>
+  </div>`;
  $('lead').innerHTML=mk.leaderboard.map((l,i)=>{const w=Math.min(50,Math.abs(l.score)*50),p=l.score>=0;
    return `<div class="lr"><span class="rk">${i+1}</span>
    <img class="ico sm" src="${l.logo}" onerror="this.style.visibility='hidden'"/><span class="tk">${l.sym}</span>
    <span class="bar"><b style="${p?'left:50%':'right:50%'};width:${w}%;background:${p?'var(--g)':'var(--r)'}"></b></span>
    <span class="sc num">${l.score>=0?'+':''}${l.score.toFixed(2)}</span></div>`;}).join('');
-}else $('mrow').style.display='none';
+}else $('mcard').style.display='none';
 
 // ---- chart (redesigned: y-axis ticks, baseline, perf-colored, hover pill) ----
 const MON=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
