@@ -177,4 +177,6 @@ class TwakExecutor:
 
 
 def build_executor(cfg: dict):
+    # Only true 'live' signs real swaps. 'paper' = real signals, simulated fills
+    # (fine-tune on the live market with zero risk); 'dry_run' = fully mocked.
     return TwakExecutor(cfg) if cfg.get("mode") == "live" else MockExecutor(cfg)

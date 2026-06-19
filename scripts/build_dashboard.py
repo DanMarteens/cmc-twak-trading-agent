@@ -91,18 +91,20 @@ def build_data(with_wallet=True, with_market=True):
             rows.append(json.loads(line))
     except Exception:
         pass
-    live = cfg.get("mode") == "live"
+    mode = cfg.get("mode", "dry_run")
+    live = mode in ("live", "paper")
     if live:
         st = json.load(open(os.path.join(ROOT, cfg["paths"]["state_file"])))
         curve = st.get("equity_curve", [])
+        lbl = "Live equity" if mode == "live" else "Paper equity · real signals"
         chart = {"dates": [c[0][:10] for c in curve], "equity": [round(c[1], 4) for c in curve],
-                 "benchmark": [], "label": "Live equity"}
+                 "benchmark": [], "label": lbl}
     else:
         chart = {"dates": bt["dates"], "equity": bt["equity"], "benchmark": bt["benchmark"],
                  "label": "Strategy backtest · 1y real prices"}
     return {
         "address": cfg["twak"]["agent_address"], "agent_id": cfg.get("bnb_sdk", {}).get("agent_id", ""),
-        "live": live, "generated_ts": int(time.time()),
+        "live": live, "mode": mode, "generated_ts": int(time.time()),
         "portfolio": _wallet(cfg) if with_wallet else {"total_usd": None, "holdings": []},
         "market": _market(cfg) if with_market else None,
         "track": {"return_pct": bt["kpis"]["total_return_pct"], "buyhold_pct": bt["kpis"]["buyhold_pct"],
@@ -263,7 +265,7 @@ border-radius:9px;padding:6px 9px;font-size:11.5px;opacity:0;transition:opacity 
 <script>
 const D=/*DATA*/, $=i=>document.getElementById(i);
 const REGCOL={trend_up:['#2fd27e','rgba(47,210,126,.14)'],trend_down:['#ff6b78','rgba(255,107,120,.14)'],chop:['#ffb547','rgba(255,181,71,.14)']};
-$('mode').textContent=D.live?'LIVE':'ARMED · DRY-RUN';
+$('mode').textContent={live:'● LIVE',paper:'● PAPER · real signals',dry_run:'ARMED · DRY-RUN'}[D.mode]||'ARMED';
 const ago=Math.max(0,Math.round(Date.now()/1000-D.generated_ts));
 $('beat').textContent='updated '+(ago<90?ago+'s':Math.round(ago/60)+'m')+' ago';
 $('chips').innerHTML=[`<span class="chip">🟢 registered</span>`,`<span class="chip"><b>${D.track.tokens}</b> tokens</span>`,

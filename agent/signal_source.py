@@ -97,7 +97,7 @@ class TwakCmcSignalClient:
 
 
 def build_signal_source(cfg: dict):
-    """Live -> TWAK price-history TA + CMC macro; dry-run -> deterministic mock."""
-    if cfg.get("mode") == "live":
+    """live/paper -> real TWAK price-history TA + CMC macro; dry_run -> mock."""
+    if cfg.get("mode") in ("live", "paper"):
         return TwakCmcSignalClient(cfg)
     return MockCMCClient()
