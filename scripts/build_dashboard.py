@@ -151,7 +151,7 @@ TEMPLATE = r"""<!DOCTYPE html>
 <html lang="en"><head><meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <meta http-equiv="refresh" content="60"/>
-<title>CMC-TWAK Agent</title>
+<title>CTA · CMC-TWAK-Agent</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
@@ -179,6 +179,9 @@ background-attachment:fixed;padding:28px 20px;-webkit-font-smoothing:antialiased
 .lab{font-size:10.5px;letter-spacing:.7px;text-transform:uppercase;color:var(--mut);font-weight:600}
 .head{display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap}
 .title{font-size:18px;font-weight:700;display:flex;align-items:center;gap:10px}
+.logo{width:36px;height:36px;border-radius:10px;vertical-align:middle}
+.nm{display:flex;flex-direction:column;line-height:1.15}
+.nm small{font-weight:500;color:var(--mut);font-size:11px}
 .badge{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:600;color:var(--g);
  background:rgba(47,210,126,.1);border:1px solid rgba(47,210,126,.28);padding:5px 11px;border-radius:999px}
 .badge i{width:7px;height:7px;border-radius:50%;background:var(--g);animation:pulse 2s infinite}
@@ -227,7 +230,10 @@ background-attachment:fixed;padding:28px 20px;-webkit-font-smoothing:antialiased
 <body><div class="wrap">
 
 <div class="head">
-  <div class="title">🤖 CMC-TWAK Agent <span class="badge"><i></i><span id="mode"></span></span>
+  <div class="title">
+    <img class="logo" src="logo.png" alt="CTA" onerror="this.outerHTML='🤖'"/>
+    <span class="nm">CTA<small>CMC · TWAK · Agent</small></span>
+    <span class="badge"><i></i><span id="mode"></span></span>
     <span class="beat" id="beat"></span></div>
   <div class="chips" id="chips"></div>
 </div>
