@@ -340,8 +340,9 @@ background-attachment:fixed;padding:40px 20px 32px;-webkit-font-smoothing:antial
 .fgbar{height:6px;border-radius:999px;background:linear-gradient(90deg,#fb7185,#fbbf63,#34d399);position:relative;margin-top:10px}
 .fgbar i{position:absolute;top:-4px;width:14px;height:14px;border-radius:50%;background:#fff;border:3px solid #070b14;transform:translateX(-50%);box-shadow:0 2px 6px rgba(0,0,0,.5);animation:fgpulse 2s ease-in-out infinite}
 @keyframes fgpulse{0%,100%{box-shadow:0 0 0 0 rgba(255,255,255,.22),0 2px 6px rgba(0,0,0,.5)}50%{box-shadow:0 0 0 6px rgba(255,255,255,0),0 2px 6px rgba(0,0,0,.5)}}
-.mstats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:22px}
-@media(max-width:620px){.mstats{grid-template-columns:1fr}}
+.mstats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:22px}
+@media(max-width:760px){.mstats{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:430px){.mstats{grid-template-columns:1fr}}
 .cell{background:var(--cell);border:1px solid var(--bd);border-radius:12px;padding:13px 15px}
 .mkv{font-size:18px;font-weight:700;margin-top:6px}
 .leadgrid{display:grid;grid-template-columns:1fr 1fr;gap:1px 32px}
@@ -511,10 +512,10 @@ $('addr').textContent=D.address.slice(0,6)+'…'+D.address.slice(-4);
 const mk=D.market;
 if(mk){const[col,bg,nm]=REG[mk.regime]||REG.chop;
  const fl=mk.fg<25?'Extreme fear':mk.fg<45?'Fear':mk.fg<55?'Neutral':mk.fg<75?'Greed':'Extreme greed';
+ const fgc=mk.fg<45?'var(--r)':mk.fg>55?'var(--g)':'var(--am)';
  $('market').innerHTML=`
-  <div class="fgblock"><div class="lab">Fear &amp; Greed — <b style="color:${col}">${mk.fg} · ${fl}</b></div>
-    <div class="fgbar"><i style="left:${mk.fg}%"></i></div></div>
   <div class="mstats">
+    <div class="cell"><div class="lab">Fear &amp; Greed</div><div class="mkv" style="color:${fgc};font-size:15px">${mk.fg} · ${fl}</div></div>
     <div class="cell"><div class="lab">BTC dominance</div><div class="mkv num">${mk.dom}%</div></div>
     <div class="cell"><div class="lab">Funding (perps)</div><div class="mkv num" style="color:${mk.funding>=0?'var(--g)':'var(--r)'}">${mk.funding>=0?'+':''}${mk.funding}%</div></div>
     <div class="cell"><div class="lab">Bullish now</div><div class="mkv num"><b class="pos">${mk.bullish}</b> / ${mk.total}</div></div>
