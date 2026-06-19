@@ -171,7 +171,7 @@ def build_data(with_wallet=True, with_market=True):
     if live and len(curve) >= 5:
         # REAL performance + chart from the live/paper equity curve
         chart = {"dates": [c[0][:10] for c in curve], "equity": [round(c[1], 4) for c in curve],
-                 "benchmark": [], "label": "Live equity" if mode == "live" else "Paper equity · real signals"}
+                 "benchmark": [], "label": "Live equity" if mode == "live" else "Paper equity"}
         eq = [c[1] for c in curve]
         init = st.get("initial_equity") or eq[0]
         ret = (eq[-1] / init - 1) * 100 if init else 0.0
@@ -418,7 +418,7 @@ background-attachment:fixed;padding:40px 20px 32px;-webkit-font-smoothing:antial
 
 <div class="sponsors"><span>Powered by</span><b>CoinMarketCap Agent Hub</b><span class="dot">·</span><b>Trust Wallet Agent Kit</b><span class="dot">·</span><b>BNB ERC-8004</b><span class="dot">·</span><span class="x402">x402 micropayments</span></div>
 <div class="foot" id="cfg"></div>
-<div class="credit">ERC-8004 agent <b id="aid"></b> · <span id="addr"></span> ·
+<div class="credit">agent <span id="addr"></span> ·
  <a href="https://github.com/DanMarteens/cmc-twak-trading-agent" target="_blank">source</a> · #CMCAgentHub</div>
 
 </div>
@@ -443,7 +443,7 @@ $('holds').innerHTML=D.portfolio.holdings.map(h=>`<div class="hchip">
  <span class="ha num">${h.amount} · $${h.usd.toFixed(2)}</span></div>`).join('');
 
 const t=D.track;
-$('trk').textContent={live:'live · real PnL',paper:'paper · real signals',backtest:'1y backtest · real prices'}[D.track_source]||'';
+$('trk').textContent=D.track_source==='backtest'?'1y backtest · real prices':'';
 $('ret').textContent=(t.return_pct>=0?'+':'')+t.return_pct+'%';$('ret').className='edge num'+(t.return_pct>=0?'':' neg');
 $('dd').textContent=t.maxdd_pct+'%';$('hr').textContent=(t.dq_pct-t.maxdd_pct).toFixed(0)+'%';$('tr').textContent=t.trades;
 (function(){const ar=Math.abs(t.return_pct),mr=Math.abs(t.buyhold_pct),mx=Math.max(ar,mr,1);
@@ -455,9 +455,8 @@ $('dd').textContent=t.maxdd_pct+'%';$('hr').textContent=(t.dq_pct-t.maxdd_pct).t
 $('cfg').innerHTML=[`<span class="fchip">strategy <b>${D.risk.policy}</b></span>`,
  `<span class="fchip k">per-position stop <b>${D.risk.stop}%</b></span>`,
  `<span class="fchip k">kill switch <b>${D.risk.kill}%</b></span>`,
- `<span class="fchip">DQ line <b>${D.track.dq_pct}%</b></span>`,
  `<span class="fchip">blocked by rules <b>${D.blocked}</b></span>`].join('');
-$('aid').textContent='#'+D.agent_id;$('addr').textContent=D.address.slice(0,6)+'…'+D.address.slice(-4);
+$('addr').textContent=D.address.slice(0,6)+'…'+D.address.slice(-4);
 
 const mk=D.market;
 if(mk){const[col,bg,nm]=REG[mk.regime]||REG.chop;
