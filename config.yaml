@@ -47,7 +47,7 @@ risk:
   min_trades_per_week: 7
   force_daily_trade: true       # if a UTC day has 0 trades, make 1 maintenance trade
   max_trades_per_day: 12
-  min_seconds_between_trades: 120
+  min_seconds_between_trades: 0     # 0 = let a tick deploy its full target set (matches backtest); 15-min ticks already space activity
 
   # "Keep capital deployed": any hour starting with a sub-$1 portfolio scores 0%.
   # Never let total portfolio value approach $1; keep a minimum in-scope holding.
