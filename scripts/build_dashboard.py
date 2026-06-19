@@ -10,22 +10,71 @@ tweet, or show judges in the demo. No server, no deps.
     open dashboard/index.html
 """
 
+import argparse
 import json
 import os
+import sys
+from collections import Counter
 
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
+def _live_data():
+    """Build dashboard data from the agent's live state + decision log."""
+    from agent.agent import load_config
+    from agent.reporting import max_drawdown, sharpe_like, _returns, load_decisions
+    cfg = load_config(os.path.join(ROOT, "config.yaml"))
+    with open(os.path.join(ROOT, cfg["paths"]["state_file"])) as f:
+        st = json.load(f)
+    curve = st.get("equity_curve", [])
+    rets = _returns(curve)
+    init = st.get("initial_equity", 0) or 1
+    final = curve[-1][1] if curve else init
+    rows = load_decisions(os.path.join(ROOT, cfg["paths"]["decision_log"]))
+    blocks = [r for r in rows if r.get("kind") == "blocked"]
+    return {
+        "generated": (curve[-1][0][:16] if curve else ""), "policy": cfg["decision"]["policy"],
+        "universe": "live", "tokens": list(cfg["twak"]["token_contracts"]), "period": "live",
+        "dates": [c[0][:10] for c in curve], "equity": [round(c[1], 4) for c in curve],
+        "benchmark": [],
+        "kpis": {
+            "initial": round(init, 2), "final": round(final, 2),
+            "total_return_pct": round((final / init - 1) * 100, 2),
+            "max_drawdown_pct": round(max_drawdown(curve) * 100, 2),
+            "dq_pct": cfg["risk"]["drawdown_dq_reference_pct"] * 100,
+            "sharpe_like": round(sharpe_like(rets), 3),
+            "trades": st.get("trade_count_total", 0), "buyhold_pct": None,
+        },
+        "positions": {t: round(p["qty"], 6) for t, p in st.get("positions", {}).items()},
+        "cash": round(st.get("cash_usd", 0), 2), "blocked": len(blocks),
+        "block_reasons": dict(Counter(b["reason"].split(":")[0] for b in blocks)),
+        "fills": [r for r in rows if r.get("kind") == "fill"][-8:],
+    }
+
+
 def main():
-    src = os.path.join(ROOT, "logs", "backtest_result.json")
-    with open(src) as f:
-        data = json.load(f)
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--live", action="store_true", help="build from live agent state")
+    ap.add_argument("--auto", action="store_true", help="live if config mode==live, else backtest")
+    args = ap.parse_args()
+
+    use_live = args.live
+    if args.auto:
+        from agent.agent import load_config
+        use_live = load_config(os.path.join(ROOT, "config.yaml")).get("mode") == "live"
+
+    if use_live:
+        data = _live_data()
+    else:
+        with open(os.path.join(ROOT, "logs", "backtest_result.json")) as f:
+            data = json.load(f)
     os.makedirs(os.path.join(ROOT, "dashboard"), exist_ok=True)
     html = TEMPLATE.replace("/*DATA*/", json.dumps(data))
     out = os.path.join(ROOT, "dashboard", "index.html")
     with open(out, "w") as f:
         f.write(html)
-    print(f"-> {out}")
+    print(f"-> {out} ({'live' if use_live else 'backtest'})")
 
 
 TEMPLATE = r"""<!DOCTYPE html>
@@ -120,10 +169,12 @@ $('badges').innerHTML=[`<span class="badge on">● ${D.policy} strategy</span>`,
   `<span class="badge">CMC Agent Hub</span>`,`<span class="badge">TWAK · BSC</span>`].join('');
 
 // KPIs
-const k=D.kpis, edge=(k.total_return_pct-k.buyhold_pct);
+const k=D.kpis, hasBench=(k.buyhold_pct!==null && k.buyhold_pct!==undefined);
+const edge=hasBench?(k.total_return_pct-k.buyhold_pct):0;
 $('kpis').innerHTML=[
  ['Total return',pct(k.total_return_pct),cls(k.total_return_pct),'backtest, '+D.period],
- ['vs. buy &amp; hold','+'+edge.toFixed(1)+' pts','pos','market did '+pct(k.buyhold_pct)],
+ hasBench?['vs. buy &amp; hold','+'+edge.toFixed(1)+' pts','pos','market did '+pct(k.buyhold_pct)]
+          :['status','● LIVE','pos','trading on BSC'],
  ['Max drawdown',k.max_drawdown_pct.toFixed(2)+'%','pos','DQ line '+k.dq_pct+'% — safe'],
  ['Sharpe-like',k.sharpe_like.toFixed(2),k.sharpe_like>=0?'pos':'neg','per-bar'],
  ['Trades',String(k.trades),'',D.blocked+' blocked by rules'],
@@ -149,7 +200,7 @@ function chart(){
    <stop offset="1" stop-color="var(--grn)" stop-opacity="0"/></linearGradient></defs>
   ${grid}
   <path d="${area}" fill="url(#g)"/>
-  <path d="${path(D.benchmark)}" fill="none" stroke="var(--red)" stroke-width="2" stroke-dasharray="5 4" opacity=".85"/>
+  ${D.benchmark&&D.benchmark.length?`<path d="${path(D.benchmark)}" fill="none" stroke="var(--red)" stroke-width="2" stroke-dasharray="5 4" opacity=".85"/>`:''}
   <path d="${path(D.equity)}" fill="none" stroke="var(--grn)" stroke-width="2.5"/>
   <text x="${pad}" y="${H-6}" fill="var(--mut)" font-size="11">${D.dates[0]||''}</text>
   <text x="${W-pad}" y="${H-6}" fill="var(--mut)" font-size="11" text-anchor="end">${D.dates[D.dates.length-1]||''}</text>

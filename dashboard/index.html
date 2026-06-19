@@ -90,10 +90,12 @@ $('badges').innerHTML=[`<span class="badge on">● ${D.policy} strategy</span>`,
   `<span class="badge">CMC Agent Hub</span>`,`<span class="badge">TWAK · BSC</span>`].join('');
 
 // KPIs
-const k=D.kpis, edge=(k.total_return_pct-k.buyhold_pct);
+const k=D.kpis, hasBench=(k.buyhold_pct!==null && k.buyhold_pct!==undefined);
+const edge=hasBench?(k.total_return_pct-k.buyhold_pct):0;
 $('kpis').innerHTML=[
  ['Total return',pct(k.total_return_pct),cls(k.total_return_pct),'backtest, '+D.period],
- ['vs. buy &amp; hold','+'+edge.toFixed(1)+' pts','pos','market did '+pct(k.buyhold_pct)],
+ hasBench?['vs. buy &amp; hold','+'+edge.toFixed(1)+' pts','pos','market did '+pct(k.buyhold_pct)]
+          :['status','● LIVE','pos','trading on BSC'],
  ['Max drawdown',k.max_drawdown_pct.toFixed(2)+'%','pos','DQ line '+k.dq_pct+'% — safe'],
  ['Sharpe-like',k.sharpe_like.toFixed(2),k.sharpe_like>=0?'pos':'neg','per-bar'],
  ['Trades',String(k.trades),'',D.blocked+' blocked by rules'],
@@ -119,7 +121,7 @@ function chart(){
    <stop offset="1" stop-color="var(--grn)" stop-opacity="0"/></linearGradient></defs>
   ${grid}
   <path d="${area}" fill="url(#g)"/>
-  <path d="${path(D.benchmark)}" fill="none" stroke="var(--red)" stroke-width="2" stroke-dasharray="5 4" opacity=".85"/>
+  ${D.benchmark&&D.benchmark.length?`<path d="${path(D.benchmark)}" fill="none" stroke="var(--red)" stroke-width="2" stroke-dasharray="5 4" opacity=".85"/>`:''}
   <path d="${path(D.equity)}" fill="none" stroke="var(--grn)" stroke-width="2.5"/>
   <text x="${pad}" y="${H-6}" fill="var(--mut)" font-size="11">${D.dates[0]||''}</text>
   <text x="${W-pad}" y="${H-6}" fill="var(--mut)" font-size="11" text-anchor="end">${D.dates[D.dates.length-1]||''}</text>
