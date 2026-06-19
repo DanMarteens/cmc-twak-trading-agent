@@ -30,12 +30,13 @@ SYSTEM_PROMPT = """\
 3. Це турнір на ранг за дохідністю з жорстким drawdown-DQ: будь рішучим коли
    портфель здоровий, але миттєво деризикуй біля межі. Не all-in.
 4. size_pct — частка від cash_usd, не від total_equity.
-5. action може бути "short" (через перпи) у нисхідному тренді — не лише buy/sell.
+5. ВИКОНАННЯ ЛИШЕ СПОТ (без перпів/шортів/плеча). Дозволені дії: buy, sell,
+   hold, close. У нисхідному тренді — НЕ "short", а "close"/"sell" (вихід у кеш).
 6. confidence < 0.55 → action = "hold".
 7. Завжди коротко пояснюй rationale з посиланням на конкретні сигнали.
 
 ВИХІД — РІВНО цей JSON, без markdown:
-{"decisions":[{"token":"CAKE","action":"buy|sell|short|hold|close","size_pct":0.0,
+{"decisions":[{"token":"CAKE","action":"buy|sell|hold|close","size_pct":0.0,
 "confidence":0.0,"rationale":"..."}],"portfolio_note":"..."}
 """
 
@@ -187,6 +188,10 @@ class LLMDecider:
             try:
                 s = text[text.find("{"): text.rfind("}") + 1]  # strip any ``` fences
                 decisions = _validate(json.loads(s).get("decisions", []))
+                # Spot-only safety net: if the model ignores the prompt and proposes
+                # a short while perps are disabled, drop it (never reaches executor).
+                if not self.cfg["risk"].get("perps_enabled"):
+                    decisions = [d for d in decisions if d["action"] != "short"]
                 if decisions:
                     return decisions
             except Exception:

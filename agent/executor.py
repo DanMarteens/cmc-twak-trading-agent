@@ -80,7 +80,12 @@ class MockExecutor:
         if action == "buy":
             _apply_spot_buy(state, token, size_usd, fill_price)
         elif action == "short":
-            _apply_short_open(state, token, size_usd, fill_price, self.cfg["risk"]["max_leverage"])
+            if not self.cfg["risk"].get("perps_enabled"):
+                log.event("unsupported_action", token=token, action="short",
+                          note="spot-only (perps disabled); short ignored")
+                return None
+            _apply_short_open(state, token, size_usd, fill_price,
+                              self.cfg["risk"].get("max_leverage", 1.0))
         elif action in ("close", "sell"):
             _apply_close(state, token, fill_price)
 
