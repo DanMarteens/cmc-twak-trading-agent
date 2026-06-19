@@ -388,7 +388,7 @@ background-attachment:fixed;padding:40px 20px 32px;-webkit-font-smoothing:antial
   <div class="ph">Performance <span id="trk"></span></div>
   <div class="trgrid">
     <div>
-      <div class="lab">vs the market</div>
+      <div class="lab">Bot vs market</div>
       <div class="edge num" id="ret"></div>
       <div class="cmp" id="cmp"></div>
     </div>
@@ -441,13 +441,13 @@ $('holds').innerHTML=D.portfolio.holdings.map(h=>`<div class="hchip">
  <img class="ico" src="${h.logo}" onerror="this.outerHTML='<i class=dotk></i>'"/>${h.sym}
  <span class="ha num">${h.amount} · $${h.usd.toFixed(2)}</span></div>`).join('');
 
-const t=D.track,edge=(t.return_pct-t.buyhold_pct);
+const t=D.track;
 $('trk').textContent={live:'live · real PnL',paper:'paper · real signals',backtest:'1y backtest · real prices'}[D.track_source]||'';
-$('ret').textContent=(edge>=0?'+':'')+edge.toFixed(1)+' pts';$('ret').className='edge num'+(edge>=0?'':' neg');
+$('ret').textContent=(t.return_pct>=0?'+':'')+t.return_pct+'%';$('ret').className='edge num'+(t.return_pct>=0?'':' neg');
 $('dd').textContent=t.maxdd_pct+'%';$('hr').textContent=(t.dq_pct-t.maxdd_pct).toFixed(0)+'%';$('tr').textContent=t.trades;
 (function(){const ar=Math.abs(t.return_pct),mr=Math.abs(t.buyhold_pct),mx=Math.max(ar,mr,1);
  $('cmp').innerHTML=`
-  <div class="cmprow"><span class="cl">Agent</span><span class="cbar"><b style="width:${(ar/mx*100).toFixed(0)}%;background:${t.return_pct>=0?'var(--g)':'var(--r)'}"></b></span><span class="cv ${t.return_pct>=0?'pos':'neg'}">${(t.return_pct>=0?'+':'')+t.return_pct}%</span></div>
+  <div class="cmprow"><span class="cl">Bot</span><span class="cbar"><b style="width:${(ar/mx*100).toFixed(0)}%;background:${t.return_pct>=0?'var(--g)':'var(--r)'}"></b></span><span class="cv ${t.return_pct>=0?'pos':'neg'}">${(t.return_pct>=0?'+':'')+t.return_pct}%</span></div>
   <div class="cmprow"><span class="cl">Market</span><span class="cbar"><b style="width:${(mr/mx*100).toFixed(0)}%;background:var(--r);opacity:.5"></b></span><span class="cv neg">${t.buyhold_pct}%</span></div>`;
 })();
 
@@ -524,7 +524,7 @@ const fmt=s=>{if(!s)return'';const d=s.split('-');return MON[(+d[1]||1)-1]+' '+(
   <text x="${W-R+8}" y="${(y+3).toFixed(1)}" fill="var(--mut2)" font-size="10">$${v.toFixed(ydec)}</text>`;}
  const base=Y(c.equity[0]);
  $('clab').textContent=c.label;$('cmeta').textContent=N+' points';
- $('lg').innerHTML=`<span><i style="background:${col}"></i>Agent</span>`+(hasB?`<span><i style="background:var(--r)"></i>Market (buy&amp;hold)</span>`:'')+`<span><i style="background:var(--mut2)"></i>start</span>`;
+ $('lg').innerHTML=`<span><i style="background:${col}"></i>Bot</span>`+(hasB?`<span><i style="background:var(--r)"></i>Market (buy&amp;hold)</span>`:'')+`<span><i style="background:var(--mut2)"></i>start</span>`;
  $('cw').insertAdjacentHTML('afterbegin',`<svg id="svg" viewBox="0 0 ${W} ${H}" width="100%" style="display:block">
   <defs><linearGradient id="ag" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${col}" stop-opacity=".26"/><stop offset="1" stop-color="${col}" stop-opacity="0"/></linearGradient>
   <filter id="gl"><feGaussianBlur stdDeviation="2.2" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>
