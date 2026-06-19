@@ -116,12 +116,37 @@ def _market(cfg):
         top = [{"sym": s.token, "score": round(s.score, 3), "logo": _logo(s.token, tc.get(s.token))}
                for s in ranked[:8]]
         bullish = sum(1 for s in sigs.values() if s.score > 0)
+        tradeable = set(cfg["twak"]["token_contracts"])
+        prices = {t: float(d.get("price", 0)) for t, d in snap.items()
+                  if t in tradeable and float(d.get("price", 0)) > 0}
         return {"regime": regime, "fg": round(float(any_d.get("fear_greed_index", 50))),
                 "dom": round(float(any_d.get("btc_dominance", 54)), 1),
                 "funding": round(float(any_d.get("funding_rate", 0)), 4),
-                "bullish": bullish, "total": len(sigs), "leaderboard": top}
+                "bullish": bullish, "total": len(sigs), "leaderboard": top, "prices": prices}
     except Exception:
         return None
+
+
+def _bench_return(prices):
+    """REAL equal-weight market return since the agent started, anchored once in
+    dashboard/bench_anchor.json (reset by go_live.sh at the live window start)."""
+    if not prices:
+        return None
+    path = os.path.join(ROOT, "dashboard", "bench_anchor.json")
+    if os.path.exists(path):
+        try:
+            anchor = json.load(open(path))
+        except Exception:
+            anchor = None
+    else:
+        anchor = None
+    if not anchor:
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        json.dump(prices, open(path, "w"))
+        return 0.0
+    rets = [prices[s] / anchor[s] - 1 for s in anchor
+            if s in prices and anchor.get(s, 0) > 0]
+    return round(sum(rets) / len(rets) * 100, 2) if rets else 0.0
 
 
 def build_data(with_wallet=True, with_market=True):
@@ -136,17 +161,38 @@ def build_data(with_wallet=True, with_market=True):
         pass
     mode = cfg.get("mode", "dry_run")
     live = mode in ("live", "paper")
-    curve = []
+    market = _market(cfg) if with_market else None
+    st, curve = {}, []
     if live:
         st = json.load(open(os.path.join(ROOT, cfg["paths"]["state_file"])))
         curve = st.get("equity_curve", [])
+    dq = cfg["risk"]["drawdown_dq_reference_pct"] * 100
+    ntok = len(cfg["twak"]["token_contracts"])
     if live and len(curve) >= 5:
-        lbl = "Live equity" if mode == "live" else "Paper equity · real signals"
+        # REAL performance + chart from the live/paper equity curve
         chart = {"dates": [c[0][:10] for c in curve], "equity": [round(c[1], 4) for c in curve],
-                 "benchmark": [], "label": lbl}
+                 "benchmark": [], "label": "Live equity" if mode == "live" else "Paper equity · real signals"}
+        eq = [c[1] for c in curve]
+        init = st.get("initial_equity") or eq[0]
+        ret = (eq[-1] / init - 1) * 100 if init else 0.0
+        peak = eq[0]; mdd = 0.0
+        for v in eq:
+            if v > peak:
+                peak = v
+            if peak > 0:
+                mdd = max(mdd, (peak - v) / peak)
+        bh = _bench_return(market.get("prices")) if market else None
+        track = {"return_pct": round(ret, 2), "buyhold_pct": bh if bh is not None else 0.0,
+                 "maxdd_pct": round(mdd * 100, 2), "dq_pct": dq,
+                 "trades": st.get("trade_count_total", 0), "tokens": ntok}
+        track_source = mode                       # live | paper
     else:
         chart = {"dates": bt["dates"], "equity": bt["equity"], "benchmark": bt["benchmark"],
                  "label": "Backtest · 1y real prices"}
+        track = {"return_pct": bt["kpis"]["total_return_pct"], "buyhold_pct": bt["kpis"]["buyhold_pct"],
+                 "maxdd_pct": bt["kpis"]["max_drawdown_pct"], "dq_pct": bt["kpis"]["dq_pct"],
+                 "trades": bt["kpis"]["trades"], "tokens": ntok}
+        track_source = "backtest"
     kill = cfg["risk"]["drawdown_kill_pct"]
     posture = "Aggressive" if kill >= 0.24 else "Balanced" if kill >= 0.18 else "Defensive"
     prov = _llm_provider()
@@ -155,10 +201,8 @@ def build_data(with_wallet=True, with_market=True):
         "live": live, "mode": mode, "generated_ts": int(time.time()),
         "llm": prov or "rule-based", "posture": posture,
         "portfolio": _wallet(cfg) if with_wallet else {"total_usd": None, "holdings": []},
-        "market": _market(cfg) if with_market else None,
-        "track": {"return_pct": bt["kpis"]["total_return_pct"], "buyhold_pct": bt["kpis"]["buyhold_pct"],
-                  "maxdd_pct": bt["kpis"]["max_drawdown_pct"], "dq_pct": bt["kpis"]["dq_pct"],
-                  "trades": bt["kpis"]["trades"], "tokens": len(cfg["twak"]["token_contracts"])},
+        "market": market,
+        "track": track, "track_source": track_source,
         "chart": chart,
         "risk": {"kill": kill * 100,
                  "stop": cfg["risk"]["per_position_stop_pct"] * 100, "policy": cfg["decision"]["policy"]},
@@ -310,6 +354,7 @@ background-attachment:fixed;padding:40px 20px 32px;-webkit-font-smoothing:antial
 .tagline b{color:var(--tx);font-weight:600}
 .edge{font-size:52px;font-weight:800;letter-spacing:-1.6px;line-height:1;margin:4px 0 6px;
  background:linear-gradient(96deg,#5ef0a8,#34d399);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.edge.neg{background:none;-webkit-text-fill-color:var(--r);color:var(--r)}
 .story{color:var(--tx);font-size:14px;font-weight:600;margin-bottom:2px}
 .grow{font-size:12.5px;color:var(--mut);margin-top:14px;line-height:1.7}
 .grow b{font-weight:700}
@@ -397,8 +442,8 @@ $('holds').innerHTML=D.portfolio.holdings.map(h=>`<div class="hchip">
  <span class="ha num">${h.amount} · $${h.usd.toFixed(2)}</span></div>`).join('');
 
 const t=D.track,edge=(t.return_pct-t.buyhold_pct);
-$('trk').textContent='1y backtest · real prices';
-$('ret').textContent='+'+edge.toFixed(1)+' pts';
+$('trk').textContent={live:'live · real PnL',paper:'paper · real signals',backtest:'1y backtest · real prices'}[D.track_source]||'';
+$('ret').textContent=(edge>=0?'+':'')+edge.toFixed(1)+' pts';$('ret').className='edge num'+(edge>=0?'':' neg');
 $('dd').textContent=t.maxdd_pct+'%';$('hr').textContent=(t.dq_pct-t.maxdd_pct).toFixed(0)+'%';$('tr').textContent=t.trades;
 (function(){const ar=Math.abs(t.return_pct),mr=Math.abs(t.buyhold_pct),mx=Math.max(ar,mr,1);
  $('cmp').innerHTML=`

@@ -15,7 +15,7 @@ echo "== stopping service =="
 systemctl stop cmc-twak-agent || true
 
 echo "== clearing dry-run state =="
-rm -f state/portfolio.json logs/decisions.jsonl
+rm -f state/portfolio.json logs/decisions.jsonl dashboard/bench_anchor.json
 
 echo "== mode -> live (via .env, survives git pull) =="
 grep -q '^AGENT_MODE=' .env && sed -i 's/^AGENT_MODE=.*/AGENT_MODE=live/' .env || echo 'AGENT_MODE=live' >> .env
