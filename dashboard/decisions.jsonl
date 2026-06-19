@@ -1,0 +1,162 @@
+{"kind": "tick", "tick_id": "2026-06-18T17:48:55.639595+00:00", "equity": 200.0, "drawdown": 0.0, "dq_headroom": 0.3, "ts": "2026-06-18T17:48:55.639617+00:00"}
+{"kind": "signal", "token": "BNB", "score": 0.3073, "regime": "trend_up", "actionable": true, "components": {"rsi": 0.405, "macd": 1.0, "ema": 0.0, "fear_greed": 0.0, "news": -0.44}, "ts": "2026-06-18T17:48:55.639830+00:00"}
+{"kind": "signal", "token": "CAKE", "score": -0.216, "regime": "trend_up", "actionable": false, "components": {"rsi": 1.0, "macd": -0.5, "ema": -1.0, "fear_greed": 0.0, "news": -0.41}, "ts": "2026-06-18T17:48:55.639871+00:00"}
+{"kind": "signal", "token": "ETH", "score": 0.3355, "regime": "trend_up", "actionable": true, "components": {"rsi": -0.39, "macd": 0.5, "ema": 1.0, "fear_greed": 0.0, "news": 0.08}, "ts": "2026-06-18T17:48:55.639905+00:00"}
+{"kind": "signal", "token": "BTC", "score": 0.3162, "regime": "trend_up", "actionable": true, "components": {"rsi": -0.255, "macd": 0.5, "ema": 1.0, "fear_greed": 0.0, "news": -0.45}, "ts": "2026-06-18T17:48:55.639933+00:00"}
+{"kind": "decision", "token": "BNB", "action": "buy", "size_pct": 0.3, "confidence": 0.6537, "rationale": "long bias score=0.3073 regime=trend_up", "ts": "2026-06-18T17:48:55.639974+00:00"}
+{"kind": "blocked", "token": "BNB", "action": "buy", "reason": "not_tradeable: off-universe", "ts": "2026-06-18T17:48:55.640003+00:00"}
+{"kind": "decision", "token": "ETH", "action": "buy", "size_pct": 0.3, "confidence": 0.6678, "rationale": "long bias score=0.3355 regime=trend_up", "ts": "2026-06-18T17:48:55.640028+00:00"}
+{"kind": "fill", "token": "ETH", "action": "buy", "size_usd": 60.0, "tx_hash": "0xMOCKe0d12ef863daab6c", "reason": "approved size=$60.00 (budget_mult=1.00, dd=0.000)", "ts": "2026-06-18T17:48:55.640391+00:00"}
+{"kind": "decision", "token": "BTC", "action": "buy", "size_pct": 0.3, "confidence": 0.6581, "rationale": "long bias score=0.3162 regime=trend_up", "ts": "2026-06-18T17:48:55.640640+00:00"}
+{"kind": "blocked", "token": "BTC", "action": "buy", "reason": "not_tradeable: off-universe", "ts": "2026-06-18T17:48:55.640668+00:00"}
+{"kind": "tick", "tick_id": "2026-06-18T17:48:55.640897+00:00", "equity": 200.980385, "drawdown": 0.0, "dq_headroom": 0.3, "ts": "2026-06-18T17:48:55.640901+00:00"}
+{"kind": "signal", "token": "BNB", "score": 0.843, "regime": "trend_up", "actionable": true, "components": {"rsi": 1.0, "macd": 1.0, "ema": 1.0, "fear_greed": 0.12, "news": 0.31}, "ts": "2026-06-18T17:48:55.640949+00:00"}
+{"kind": "signal", "token": "CAKE", "score": 0.186, "regime": "trend_up", "actionable": false, "components": {"rsi": 0.04, "macd": -0.5, "ema": 1.0, "fear_greed": 0.12, "news": -0.11}, "ts": "2026-06-18T17:48:55.640977+00:00"}
+{"kind": "signal", "token": "ETH", "score": -0.0008, "regime": "trend_up", "actionable": false, "components": {"rsi": 0.045, "macd": 1.0, "ema": -1.0, "fear_greed": 0.12, "news": 0.26}, "ts": "2026-06-18T17:48:55.640999+00:00"}
+{"kind": "signal", "token": "BTC", "score": 0.419, "regime": "trend_up", "actionable": true, "components": {"rsi": -0.06, "macd": 0.5, "ema": 1.0, "fear_greed": 0.12, "news": -0.03}, "ts": "2026-06-18T17:48:55.641024+00:00"}
+{"kind": "decision", "token": "BNB", "action": "buy", "size_pct": 0.3, "confidence": 0.9215, "rationale": "long bias score=0.843 regime=trend_up", "ts": "2026-06-18T17:48:55.641053+00:00"}
+{"kind": "blocked", "token": "BNB", "action": "buy", "reason": "not_tradeable: off-universe", "ts": "2026-06-18T17:48:55.641074+00:00"}
+{"kind": "decision", "token": "ETH", "action": "close", "size_pct": 0.0, "confidence": 0.6, "rationale": "signal decayed (score=-0.0008)", "ts": "2026-06-18T17:48:55.641094+00:00"}
+{"kind": "fill", "token": "ETH", "action": "close", "size_usd": 0.0, "tx_hash": "0xMOCK6aa25f3c18ae457f", "reason": "close_allowed", "ts": "2026-06-18T17:48:55.641330+00:00"}
+{"kind": "decision", "token": "BTC", "action": "buy", "size_pct": 0.3, "confidence": 0.7095, "rationale": "long bias score=0.419 regime=trend_up", "ts": "2026-06-18T17:48:55.641550+00:00"}
+{"kind": "blocked", "token": "BTC", "action": "buy", "reason": "not_tradeable: off-universe", "ts": "2026-06-18T17:48:55.641576+00:00"}
+{"kind": "tick", "tick_id": "2026-06-18T17:48:55.641859+00:00", "equity": 200.919404, "drawdown": 0.0003, "dq_headroom": 0.2997, "ts": "2026-06-18T17:48:55.641862+00:00"}
+{"kind": "signal", "token": "BNB", "score": 0.3493, "regime": "trend_up", "actionable": true, "components": {"rsi": 0.485, "macd": 1.0, "ema": 0.0, "fear_greed": -0.18, "news": -0.04}, "ts": "2026-06-18T17:48:55.641905+00:00"}
+{"kind": "signal", "token": "CAKE", "score": 0.0277, "regime": "trend_up", "actionable": false, "components": {"rsi": -0.685, "macd": 1.0, "ema": 0.0, "fear_greed": -0.18, "news": -0.33}, "ts": "2026-06-18T17:48:55.641931+00:00"}
+{"kind": "signal", "token": "ETH", "score": 0.0107, "regime": "trend_up", "actionable": false, "components": {"rsi": 0.995, "macd": 0.5, "ema": -1.0, "fear_greed": -0.18, "news": -0.45}, "ts": "2026-06-18T17:48:55.641957+00:00"}
+{"kind": "signal", "token": "BTC", "score": 0.206, "regime": "trend_up", "actionable": false, "components": {"rsi": -1.0, "macd": 0.5, "ema": 1.0, "fear_greed": -0.18, "news": 0.49}, "ts": "2026-06-18T17:48:55.641989+00:00"}
+{"kind": "decision", "token": "BNB", "action": "buy", "size_pct": 0.3, "confidence": 0.6746, "rationale": "long bias score=0.3493 regime=trend_up", "ts": "2026-06-18T17:48:55.642022+00:00"}
+{"kind": "blocked", "token": "BNB", "action": "buy", "reason": "not_tradeable: off-universe", "ts": "2026-06-18T17:48:55.642045+00:00"}
+{"kind": "tick", "tick_id": "2026-06-18T17:48:55.642275+00:00", "equity": 200.919404, "drawdown": 0.0003, "dq_headroom": 0.2997, "ts": "2026-06-18T17:48:55.642278+00:00"}
+{"kind": "signal", "token": "BNB", "score": -0.6845, "regime": "trend_up", "actionable": true, "components": {"rsi": -0.97, "macd": -0.5, "ema": -1.0, "fear_greed": -0.32, "news": 0.15}, "ts": "2026-06-18T17:48:55.642319+00:00"}
+{"kind": "signal", "token": "CAKE", "score": 0.1505, "regime": "trend_up", "actionable": false, "components": {"rsi": 0.75, "macd": 1.0, "ema": -1.0, "fear_greed": -0.32, "news": 0.45}, "ts": "2026-06-18T17:48:55.642347+00:00"}
+{"kind": "signal", "token": "ETH", "score": 0.1188, "regime": "trend_up", "actionable": false, "components": {"rsi": 0.435, "macd": -1.0, "ema": 1.0, "fear_greed": -0.32, "news": -0.08}, "ts": "2026-06-18T17:48:55.642374+00:00"}
+{"kind": "signal", "token": "BTC", "score": 0.5387, "regime": "trend_up", "actionable": true, "components": {"rsi": 0.715, "macd": 0.5, "ema": 1.0, "fear_greed": -0.32, "news": -0.33}, "ts": "2026-06-18T17:48:55.642397+00:00"}
+{"kind": "decision", "token": "BTC", "action": "buy", "size_pct": 0.3, "confidence": 0.7693, "rationale": "long bias score=0.5387 regime=trend_up", "ts": "2026-06-18T17:48:55.642427+00:00"}
+{"kind": "blocked", "token": "BTC", "action": "buy", "reason": "not_tradeable: off-universe", "ts": "2026-06-18T17:48:55.642449+00:00"}
+{"kind": "tick", "tick_id": "2026-06-18T17:48:55.642696+00:00", "equity": 200.919404, "drawdown": 0.0003, "dq_headroom": 0.2997, "ts": "2026-06-18T17:48:55.642699+00:00"}
+{"kind": "signal", "token": "BNB", "score": -0.847, "regime": "trend_up", "actionable": true, "components": {"rsi": -1.0, "macd": -1.0, "ema": -1.0, "fear_greed": -0.16, "news": -0.31}, "ts": "2026-06-18T17:48:55.642744+00:00"}
+{"kind": "signal", "token": "CAKE", "score": 0.339, "regime": "trend_up", "actionable": true, "components": {"rsi": 1.0, "macd": 0.5, "ema": 0.0, "fear_greed": -0.16, "news": -0.2}, "ts": "2026-06-18T17:48:55.642767+00:00"}
+{"kind": "signal", "token": "ETH", "score": 0.1527, "regime": "trend_up", "actionable": false, "components": {"rsi": -0.285, "macd": 1.0, "ema": 0.0, "fear_greed": -0.16, "news": -0.1}, "ts": "2026-06-18T17:48:55.642790+00:00"}
+{"kind": "signal", "token": "BTC", "score": 0.2453, "regime": "trend_up", "actionable": false, "components": {"rsi": -0.715, "macd": 0.5, "ema": 1.0, "fear_greed": -0.16, "news": 0.15}, "ts": "2026-06-18T17:48:55.642813+00:00"}
+{"kind": "decision", "token": "CAKE", "action": "buy", "size_pct": 0.3, "confidence": 0.6695, "rationale": "long bias score=0.339 regime=trend_up", "ts": "2026-06-18T17:48:55.642840+00:00"}
+{"kind": "fill", "token": "CAKE", "action": "buy", "size_usd": 60.2, "tx_hash": "0xMOCK96651d9bc04ee5f7", "reason": "approved size=$60.20 (budget_mult=1.00, dd=0.000)", "ts": "2026-06-18T17:48:55.643074+00:00"}
+{"kind": "tick", "tick_id": "2026-06-18T17:48:55.643494+00:00", "equity": 200.933982, "drawdown": 0.0002, "dq_headroom": 0.2998, "ts": "2026-06-18T17:48:55.643497+00:00"}
+{"kind": "signal", "token": "BNB", "score": -0.322, "regime": "trend_up", "actionable": true, "components": {"rsi": -1.0, "macd": 1.0, "ema": -1.0, "fear_greed": -0.2, "news": -0.02}, "ts": "2026-06-18T17:48:55.643542+00:00"}
+{"kind": "signal", "token": "CAKE", "score": 0.0772, "regime": "trend_up", "actionable": false, "components": {"rsi": -0.175, "macd": 0.5, "ema": 0.0, "fear_greed": -0.2, "news": 0.16}, "ts": "2026-06-18T17:48:55.643569+00:00"}
+{"kind": "signal", "token": "ETH", "score": -0.014, "regime": "trend_up", "actionable": false, "components": {"rsi": -1.0, "macd": 0.0, "ema": 1.0, "fear_greed": -0.2, "news": -0.44}, "ts": "2026-06-18T17:48:55.643593+00:00"}
+{"kind": "signal", "token": "BTC", "score": 0.674, "regime": "trend_up", "actionable": true, "components": {"rsi": 1.0, "macd": 0.5, "ema": 1.0, "fear_greed": -0.2, "news": 0.19}, "ts": "2026-06-18T17:48:55.643619+00:00"}
+{"kind": "decision", "token": "CAKE", "action": "close", "size_pct": 0.0, "confidence": 0.6, "rationale": "signal decayed (score=0.0772)", "ts": "2026-06-18T17:48:55.643648+00:00"}
+{"kind": "fill", "token": "CAKE", "action": "close", "size_usd": 0.0, "tx_hash": "0xMOCKed398402d2e4864c", "reason": "close_allowed", "ts": "2026-06-18T17:48:55.643891+00:00"}
+{"kind": "decision", "token": "BTC", "action": "buy", "size_pct": 0.3, "confidence": 0.837, "rationale": "long bias score=0.674 regime=trend_up", "ts": "2026-06-18T17:48:55.644107+00:00"}
+{"kind": "blocked", "token": "BTC", "action": "buy", "reason": "not_tradeable: off-universe", "ts": "2026-06-18T17:48:55.644134+00:00"}
+{"kind": "tick", "tick_id": "2026-06-18T17:48:55.644367+00:00", "equity": 200.873767, "drawdown": 0.0005, "dq_headroom": 0.2995, "ts": "2026-06-18T17:48:55.644370+00:00"}
+{"kind": "signal", "token": "BNB", "score": 0.345, "regime": "trend_up", "actionable": true, "components": {"rsi": -0.5, "macd": 0.5, "ema": 1.0, "fear_greed": 0.08, "news": 0.37}, "ts": "2026-06-18T17:48:55.644413+00:00"}
+{"kind": "signal", "token": "CAKE", "score": -0.168, "regime": "trend_up", "actionable": false, "components": {"rsi": -1.0, "macd": -1.0, "ema": 1.0, "fear_greed": 0.08, "news": 0.24}, "ts": "2026-06-18T17:48:55.644438+00:00"}
+{"kind": "signal", "token": "ETH", "score": -0.443, "regime": "trend_up", "actionable": true, "components": {"rsi": -1.0, "macd": -1.0, "ema": 0.0, "fear_greed": 0.08, "news": 0.49}, "ts": "2026-06-18T17:48:55.644465+00:00"}
+{"kind": "signal", "token": "BTC", "score": 0.712, "regime": "trend_up", "actionable": true, "components": {"rsi": 1.0, "macd": 0.5, "ema": 1.0, "fear_greed": 0.08, "news": 0.29}, "ts": "2026-06-18T17:48:55.644493+00:00"}
+{"kind": "decision", "token": "BNB", "action": "buy", "size_pct": 0.3, "confidence": 0.6725, "rationale": "long bias score=0.345 regime=trend_up", "ts": "2026-06-18T17:48:55.644521+00:00"}
+{"kind": "blocked", "token": "BNB", "action": "buy", "reason": "not_tradeable: off-universe", "ts": "2026-06-18T17:48:55.644545+00:00"}
+{"kind": "decision", "token": "BTC", "action": "buy", "size_pct": 0.3, "confidence": 0.856, "rationale": "long bias score=0.712 regime=trend_up", "ts": "2026-06-18T17:48:55.644568+00:00"}
+{"kind": "blocked", "token": "BTC", "action": "buy", "reason": "not_tradeable: off-universe", "ts": "2026-06-18T17:48:55.644596+00:00"}
+{"kind": "tick", "tick_id": "2026-06-18T17:48:55.644851+00:00", "equity": 200.873767, "drawdown": 0.0005, "dq_headroom": 0.2995, "ts": "2026-06-18T17:48:55.644854+00:00"}
+{"kind": "signal", "token": "BNB", "score": 0.1308, "regime": "trend_up", "actionable": false, "components": {"rsi": -0.705, "macd": 0.0, "ema": 1.0, "fear_greed": 0.28, "news": -0.21}, "ts": "2026-06-18T17:48:55.644896+00:00"}
+{"kind": "signal", "token": "CAKE", "score": -0.276, "regime": "trend_up", "actionable": false, "components": {"rsi": 0.32, "macd": -0.5, "ema": -1.0, "fear_greed": 0.28, "news": 0.41}, "ts": "2026-06-18T17:48:55.644935+00:00"}
+{"kind": "signal", "token": "ETH", "score": -0.5172, "regime": "trend_up", "actionable": true, "components": {"rsi": -0.925, "macd": 0.0, "ema": -1.0, "fear_greed": 0.28, "news": -0.14}, "ts": "2026-06-18T17:48:55.644962+00:00"}
+{"kind": "signal", "token": "BTC", "score": 0.4065, "regime": "trend_up", "actionable": true, "components": {"rsi": -0.05, "macd": 0.5, "ema": 1.0, "fear_greed": 0.28, "news": -0.34}, "ts": "2026-06-18T17:48:55.644991+00:00"}
+{"kind": "decision", "token": "BTC", "action": "buy", "size_pct": 0.3, "confidence": 0.7032, "rationale": "long bias score=0.4065 regime=trend_up", "ts": "2026-06-18T17:48:55.645026+00:00"}
+{"kind": "blocked", "token": "BTC", "action": "buy", "reason": "not_tradeable: off-universe", "ts": "2026-06-18T17:48:55.645054+00:00"}
+{"kind": "tick", "tick_id": "2026-06-18T17:48:55.645308+00:00", "equity": 200.873767, "drawdown": 0.0005, "dq_headroom": 0.2995, "ts": "2026-06-18T17:48:55.645311+00:00"}
+{"kind": "signal", "token": "BNB", "score": 0.844, "regime": "trend_up", "actionable": true, "components": {"rsi": 1.0, "macd": 1.0, "ema": 1.0, "fear_greed": 0.14, "news": 0.3}, "ts": "2026-06-18T17:48:55.645353+00:00"}
+{"kind": "signal", "token": "CAKE", "score": 0.086, "regime": "trend_up", "actionable": false, "components": {"rsi": 1.0, "macd": 0.5, "ema": -1.0, "fear_greed": 0.14, "news": -0.03}, "ts": "2026-06-18T17:48:55.645384+00:00"}
+{"kind": "signal", "token": "ETH", "score": -0.44, "regime": "trend_up", "actionable": true, "components": {"rsi": -1.0, "macd": 0.5, "ema": -1.0, "fear_greed": 0.14, "news": -0.29}, "ts": "2026-06-18T17:48:55.645410+00:00"}
+{"kind": "signal", "token": "BTC", "score": 0.56, "regime": "trend_up", "actionable": true, "components": {"rsi": 0.56, "macd": 0.5, "ema": 1.0, "fear_greed": 0.14, "news": -0.19}, "ts": "2026-06-18T17:48:55.645436+00:00"}
+{"kind": "decision", "token": "BNB", "action": "buy", "size_pct": 0.3, "confidence": 0.922, "rationale": "long bias score=0.844 regime=trend_up", "ts": "2026-06-18T17:48:55.645465+00:00"}
+{"kind": "blocked", "token": "BNB", "action": "buy", "reason": "not_tradeable: off-universe", "ts": "2026-06-18T17:48:55.645489+00:00"}
+{"kind": "decision", "token": "BTC", "action": "buy", "size_pct": 0.3, "confidence": 0.78, "rationale": "long bias score=0.56 regime=trend_up", "ts": "2026-06-18T17:48:55.645513+00:00"}
+{"kind": "blocked", "token": "BTC", "action": "buy", "reason": "not_tradeable: off-universe", "ts": "2026-06-18T17:48:55.645541+00:00"}
+{"kind": "tick", "tick_id": "2026-06-18T17:48:55.645794+00:00", "equity": 200.873767, "drawdown": 0.0005, "dq_headroom": 0.2995, "ts": "2026-06-18T17:48:55.645796+00:00"}
+{"kind": "signal", "token": "BNB", "score": -0.06, "regime": "trend_up", "actionable": false, "components": {"rsi": -1.0, "macd": -0.5, "ema": 1.0, "fear_greed": -0.06, "news": 0.21}, "ts": "2026-06-18T17:48:55.645839+00:00"}
+{"kind": "signal", "token": "CAKE", "score": -0.5253, "regime": "trend_up", "actionable": true, "components": {"rsi": -0.945, "macd": 0.0, "ema": -1.0, "fear_greed": -0.06, "news": 0.17}, "ts": "2026-06-18T17:48:55.645866+00:00"}
+{"kind": "signal", "token": "ETH", "score": 0.144, "regime": "trend_up", "actionable": false, "components": {"rsi": -1.0, "macd": 0.5, "ema": 1.0, "fear_greed": -0.06, "news": -0.25}, "ts": "2026-06-18T17:48:55.645891+00:00"}
+{"kind": "signal", "token": "BTC", "score": 0.2047, "regime": "trend_up", "actionable": false, "components": {"rsi": -0.925, "macd": 0.5, "ema": 1.0, "fear_greed": -0.06, "news": 0.17}, "ts": "2026-06-18T17:48:55.645916+00:00"}
+{"kind": "tick", "tick_id": "2026-06-18T17:48:55.646183+00:00", "equity": 200.873767, "drawdown": 0.0005, "dq_headroom": 0.2995, "ts": "2026-06-18T17:48:55.646185+00:00"}
+{"kind": "signal", "token": "BNB", "score": -0.1363, "regime": "trend_up", "actionable": false, "components": {"rsi": -0.485, "macd": -1.0, "ema": 1.0, "fear_greed": -0.26, "news": -0.39}, "ts": "2026-06-18T17:48:55.646228+00:00"}
+{"kind": "signal", "token": "CAKE", "score": 0.0352, "regime": "trend_up", "actionable": false, "components": {"rsi": 0.745, "macd": -0.5, "ema": 0.0, "fear_greed": -0.26, "news": 0.0}, "ts": "2026-06-18T17:48:55.646284+00:00"}
+{"kind": "signal", "token": "ETH", "score": 0.104, "regime": "trend_up", "actionable": false, "components": {"rsi": 1.0, "macd": -0.5, "ema": 0.0, "fear_greed": -0.26, "news": 0.05}, "ts": "2026-06-18T17:48:55.646309+00:00"}
+{"kind": "signal", "token": "BTC", "score": 0.1502, "regime": "trend_up", "actionable": false, "components": {"rsi": -0.875, "macd": 0.5, "ema": 1.0, "fear_greed": -0.26, "news": -0.3}, "ts": "2026-06-18T17:48:55.646335+00:00"}
+{"kind": "tick", "tick_id": "2026-06-18T17:48:55.646609+00:00", "equity": 200.873767, "drawdown": 0.0005, "dq_headroom": 0.2995, "ts": "2026-06-18T17:48:55.646612+00:00"}
+{"kind": "signal", "token": "BNB", "score": -0.1895, "regime": "trend_up", "actionable": false, "components": {"rsi": 0.95, "macd": -0.5, "ema": -1.0, "fear_greed": 0.18, "news": -0.2}, "ts": "2026-06-18T17:48:55.646647+00:00"}
+{"kind": "signal", "token": "CAKE", "score": 0.4163, "regime": "trend_up", "actionable": true, "components": {"rsi": 0.525, "macd": 1.0, "ema": 0.0, "fear_greed": 0.18, "news": 0.17}, "ts": "2026-06-18T17:48:55.646669+00:00"}
+{"kind": "signal", "token": "ETH", "score": 0.6635, "regime": "trend_up", "actionable": true, "components": {"rsi": 0.79, "macd": 0.5, "ema": 1.0, "fear_greed": 0.18, "news": 0.23}, "ts": "2026-06-18T17:48:55.646693+00:00"}
+{"kind": "signal", "token": "BTC", "score": 0.6847, "regime": "trend_up", "actionable": true, "components": {"rsi": 0.895, "macd": 0.5, "ema": 1.0, "fear_greed": 0.18, "news": 0.18}, "ts": "2026-06-18T17:48:55.646714+00:00"}
+{"kind": "decision", "token": "CAKE", "action": "buy", "size_pct": 0.3, "confidence": 0.7082, "rationale": "long bias score=0.4163 regime=trend_up", "ts": "2026-06-18T17:48:55.646740+00:00"}
+{"kind": "fill", "token": "CAKE", "action": "buy", "size_usd": 60.13, "tx_hash": "0xMOCKc46bac6765526ac5", "reason": "approved size=$60.13 (budget_mult=1.00, dd=0.001)", "ts": "2026-06-18T17:48:55.646991+00:00"}
+{"kind": "decision", "token": "ETH", "action": "buy", "size_pct": 0.3, "confidence": 0.8317, "rationale": "long bias score=0.6635 regime=trend_up", "ts": "2026-06-18T17:48:55.647270+00:00"}
+{"kind": "blocked", "token": "ETH", "action": "buy", "reason": "min_seconds_between_trades not elapsed", "ts": "2026-06-18T17:48:55.647297+00:00"}
+{"kind": "decision", "token": "BTC", "action": "buy", "size_pct": 0.3, "confidence": 0.8423, "rationale": "long bias score=0.6847 regime=trend_up", "ts": "2026-06-18T17:48:55.647316+00:00"}
+{"kind": "blocked", "token": "BTC", "action": "buy", "reason": "not_tradeable: off-universe", "ts": "2026-06-18T17:48:55.647336+00:00"}
+{"kind": "tick", "tick_id": "2026-06-18T17:48:55.647625+00:00", "equity": 199.817373, "drawdown": 0.0058, "dq_headroom": 0.2942, "ts": "2026-06-18T17:48:55.647631+00:00"}
+{"kind": "signal", "token": "BNB", "score": -0.535, "regime": "trend_up", "actionable": true, "components": {"rsi": -1.0, "macd": 0.0, "ema": -1.0, "fear_greed": 0.36, "news": -0.21}, "ts": "2026-06-18T17:48:55.647671+00:00"}
+{"kind": "signal", "token": "CAKE", "score": -0.282, "regime": "trend_up", "actionable": false, "components": {"rsi": 0.52, "macd": -0.5, "ema": -1.0, "fear_greed": 0.36, "news": -0.23}, "ts": "2026-06-18T17:48:55.647692+00:00"}
+{"kind": "signal", "token": "ETH", "score": -0.0965, "regime": "trend_up", "actionable": false, "components": {"rsi": -0.21, "macd": 1.0, "ema": -1.0, "fear_greed": 0.36, "news": -0.3}, "ts": "2026-06-18T17:48:55.647713+00:00"}
+{"kind": "signal", "token": "BTC", "score": 0.6875, "regime": "trend_up", "actionable": true, "components": {"rsi": 0.89, "macd": 0.5, "ema": 1.0, "fear_greed": 0.36, "news": 0.04}, "ts": "2026-06-18T17:48:55.647733+00:00"}
+{"kind": "decision", "token": "CAKE", "action": "close", "size_pct": 0.0, "confidence": 0.6, "rationale": "signal decayed (score=-0.282)", "ts": "2026-06-18T17:48:55.647759+00:00"}
+{"kind": "fill", "token": "CAKE", "action": "close", "size_usd": 0.0, "tx_hash": "0xMOCK4d45c8de45dbbc0a", "reason": "close_allowed", "ts": "2026-06-18T17:48:55.648031+00:00"}
+{"kind": "decision", "token": "BTC", "action": "buy", "size_pct": 0.3, "confidence": 0.8438, "rationale": "long bias score=0.6875 regime=trend_up", "ts": "2026-06-18T17:48:55.648290+00:00"}
+{"kind": "blocked", "token": "BTC", "action": "buy", "reason": "not_tradeable: off-universe", "ts": "2026-06-18T17:48:55.648313+00:00"}
+{"kind": "tick", "tick_id": "2026-06-18T17:48:55.648587+00:00", "equity": 199.7583, "drawdown": 0.0061, "dq_headroom": 0.2939, "ts": "2026-06-18T17:48:55.648590+00:00"}
+{"kind": "signal", "token": "BNB", "score": -0.825, "regime": "trend_up", "actionable": true, "components": {"rsi": -1.0, "macd": -1.0, "ema": -1.0, "fear_greed": 0.22, "news": -0.47}, "ts": "2026-06-18T17:48:55.648629+00:00"}
+{"kind": "signal", "token": "CAKE", "score": 0.3488, "regime": "trend_up", "actionable": true, "components": {"rsi": 0.075, "macd": 0.0, "ema": 1.0, "fear_greed": 0.22, "news": 0.08}, "ts": "2026-06-18T17:48:55.648656+00:00"}
+{"kind": "signal", "token": "ETH", "score": 0.1097, "regime": "trend_up", "actionable": false, "components": {"rsi": 0.515, "macd": 0.0, "ema": 0.0, "fear_greed": 0.22, "news": -0.41}, "ts": "2026-06-18T17:48:55.648691+00:00"}
+{"kind": "signal", "token": "BTC", "score": 0.187, "regime": "trend_up", "actionable": false, "components": {"rsi": -1.0, "macd": 0.5, "ema": 1.0, "fear_greed": 0.22, "news": -0.1}, "ts": "2026-06-18T17:48:55.648718+00:00"}
+{"kind": "decision", "token": "CAKE", "action": "buy", "size_pct": 0.3, "confidence": 0.6744, "rationale": "long bias score=0.3488 regime=trend_up", "ts": "2026-06-18T17:48:55.648751+00:00"}
+{"kind": "fill", "token": "CAKE", "action": "buy", "size_usd": 58.47, "tx_hash": "0xMOCKa15334575cd7b39e", "reason": "approved size=$58.47 (budget_mult=0.98, dd=0.006)", "ts": "2026-06-18T17:48:55.649020+00:00"}
+{"kind": "tick", "tick_id": "2026-06-18T17:48:55.649561+00:00", "equity": 199.089753, "drawdown": 0.0094, "dq_headroom": 0.2906, "ts": "2026-06-18T17:48:55.649564+00:00"}
+{"kind": "signal", "token": "BNB", "score": -0.0353, "regime": "trend_up", "actionable": false, "components": {"rsi": -0.925, "macd": -0.5, "ema": 1.0, "fear_greed": 0.2, "news": 0.01}, "ts": "2026-06-18T17:48:55.649606+00:00"}
+{"kind": "signal", "token": "CAKE", "score": 0.6753, "regime": "trend_up", "actionable": true, "components": {"rsi": 0.385, "macd": 1.0, "ema": 1.0, "fear_greed": 0.2, "news": 0.09}, "ts": "2026-06-18T17:48:55.649632+00:00"}
+{"kind": "signal", "token": "ETH", "score": 0.294, "regime": "trend_up", "actionable": false, "components": {"rsi": -0.58, "macd": 0.5, "ema": 1.0, "fear_greed": 0.2, "news": -0.06}, "ts": "2026-06-18T17:48:55.649655+00:00"}
+{"kind": "signal", "token": "BTC", "score": 0.2335, "regime": "trend_up", "actionable": false, "components": {"rsi": -0.81, "macd": 0.5, "ema": 1.0, "fear_greed": 0.2, "news": -0.09}, "ts": "2026-06-18T17:48:55.649677+00:00"}
+{"kind": "decision", "token": "CAKE", "action": "buy", "size_pct": 0.3, "confidence": 0.8377, "rationale": "long bias score=0.6753 regime=trend_up", "ts": "2026-06-18T17:48:55.649702+00:00"}
+{"kind": "fill", "token": "CAKE", "action": "buy", "size_usd": 21.17, "tx_hash": "0xMOCK9f23cc5742cc906a", "reason": "approved size=$21.17 (budget_mult=0.96, dd=0.009)", "ts": "2026-06-18T17:48:55.650000+00:00"}
+{"kind": "tick", "tick_id": "2026-06-18T17:48:55.650549+00:00", "equity": 198.201593, "drawdown": 0.0138, "dq_headroom": 0.2862, "ts": "2026-06-18T17:48:55.650552+00:00"}
+{"kind": "signal", "token": "BNB", "score": 0.132, "regime": "trend_up", "actionable": false, "components": {"rsi": -0.72, "macd": 1.0, "ema": 0.0, "fear_greed": 0.24, "news": 0.38}, "ts": "2026-06-18T17:48:55.650592+00:00"}
+{"kind": "signal", "token": "CAKE", "score": 0.119, "regime": "trend_up", "actionable": false, "components": {"rsi": 0.54, "macd": 1.0, "ema": -1.0, "fear_greed": 0.24, "news": 0.1}, "ts": "2026-06-18T17:48:55.650615+00:00"}
+{"kind": "signal", "token": "ETH", "score": -0.1315, "regime": "trend_up", "actionable": false, "components": {"rsi": -0.23, "macd": 1.0, "ema": -1.0, "fear_greed": 0.24, "news": -0.48}, "ts": "2026-06-18T17:48:55.650655+00:00"}
+{"kind": "signal", "token": "BTC", "score": 0.4758, "regime": "trend_up", "actionable": true, "components": {"rsi": 0.235, "macd": 0.5, "ema": 1.0, "fear_greed": 0.24, "news": -0.32}, "ts": "2026-06-18T17:48:55.650678+00:00"}
+{"kind": "decision", "token": "CAKE", "action": "close", "size_pct": 0.0, "confidence": 0.6, "rationale": "signal decayed (score=0.119)", "ts": "2026-06-18T17:48:55.650704+00:00"}
+{"kind": "fill", "token": "CAKE", "action": "close", "size_usd": 0.0, "tx_hash": "0xMOCK368fd764cbd0cde7", "reason": "close_allowed", "ts": "2026-06-18T17:48:55.651003+00:00"}
+{"kind": "decision", "token": "BTC", "action": "buy", "size_pct": 0.3, "confidence": 0.7379, "rationale": "long bias score=0.4758 regime=trend_up", "ts": "2026-06-18T17:48:55.651294+00:00"}
+{"kind": "blocked", "token": "BTC", "action": "buy", "reason": "not_tradeable: off-universe", "ts": "2026-06-18T17:48:55.651318+00:00"}
+{"kind": "tick", "tick_id": "2026-06-18T17:48:55.651634+00:00", "equity": 198.12351, "drawdown": 0.0142, "dq_headroom": 0.2858, "ts": "2026-06-18T17:48:55.651637+00:00"}
+{"kind": "signal", "token": "BNB", "score": -0.4805, "regime": "trend_up", "actionable": true, "components": {"rsi": -0.09, "macd": -0.5, "ema": -1.0, "fear_greed": 0.04, "news": -0.37}, "ts": "2026-06-18T17:48:55.651677+00:00"}
+{"kind": "signal", "token": "CAKE", "score": 0.0398, "regime": "trend_up", "actionable": false, "components": {"rsi": 0.135, "macd": -1.0, "ema": 1.0, "fear_greed": 0.04, "news": -0.48}, "ts": "2026-06-18T17:48:55.651700+00:00"}
+{"kind": "signal", "token": "ETH", "score": -0.033, "regime": "trend_up", "actionable": false, "components": {"rsi": -0.04, "macd": 1.0, "ema": -1.0, "fear_greed": 0.04, "news": 0.23}, "ts": "2026-06-18T17:48:55.651725+00:00"}
+{"kind": "signal", "token": "BTC", "score": 0.707, "regime": "trend_up", "actionable": true, "components": {"rsi": 1.0, "macd": 0.5, "ema": 1.0, "fear_greed": 0.04, "news": 0.28}, "ts": "2026-06-18T17:48:55.651747+00:00"}
+{"kind": "decision", "token": "BTC", "action": "buy", "size_pct": 0.3, "confidence": 0.8535, "rationale": "long bias score=0.707 regime=trend_up", "ts": "2026-06-18T17:48:55.651773+00:00"}
+{"kind": "blocked", "token": "BTC", "action": "buy", "reason": "not_tradeable: off-universe", "ts": "2026-06-18T17:48:55.651794+00:00"}
+{"kind": "tick", "tick_id": "2026-06-18T17:48:55.652107+00:00", "equity": 198.12351, "drawdown": 0.0142, "dq_headroom": 0.2858, "ts": "2026-06-18T17:48:55.652110+00:00"}
+{"kind": "signal", "token": "BNB", "score": 0.2473, "regime": "trend_up", "actionable": false, "components": {"rsi": -0.515, "macd": 0.5, "ema": 1.0, "fear_greed": -0.08, "news": -0.41}, "ts": "2026-06-18T17:48:55.652149+00:00"}
+{"kind": "signal", "token": "CAKE", "score": -0.1497, "regime": "trend_up", "actionable": false, "components": {"rsi": -0.675, "macd": 0.0, "ema": 0.0, "fear_greed": -0.08, "news": 0.27}, "ts": "2026-06-18T17:48:55.652172+00:00"}
+{"kind": "signal", "token": "ETH", "score": 0.459, "regime": "trend_up", "actionable": true, "components": {"rsi": 1.0, "macd": 1.0, "ema": 0.0, "fear_greed": -0.08, "news": -0.33}, "ts": "2026-06-18T17:48:55.652197+00:00"}
+{"kind": "signal", "token": "BTC", "score": 0.185, "regime": "trend_up", "actionable": false, "components": {"rsi": -1.0, "macd": 0.5, "ema": 1.0, "fear_greed": -0.08, "news": 0.18}, "ts": "2026-06-18T17:48:55.652222+00:00"}
+{"kind": "decision", "token": "ETH", "action": "buy", "size_pct": 0.3, "confidence": 0.7295, "rationale": "long bias score=0.459 regime=trend_up", "ts": "2026-06-18T17:48:55.652247+00:00"}
+{"kind": "fill", "token": "ETH", "action": "buy", "size_usd": 56.06, "tx_hash": "0xMOCK2e6ab98df65ce923", "reason": "approved size=$56.06 (budget_mult=0.94, dd=0.014)", "ts": "2026-06-18T17:48:55.652564+00:00"}
+{"kind": "tick", "tick_id": "2026-06-18T17:48:55.653182+00:00", "equity": 199.020871, "drawdown": 0.0097, "dq_headroom": 0.2903, "ts": "2026-06-18T17:48:55.653185+00:00"}
+{"kind": "signal", "token": "BNB", "score": -0.138, "regime": "trend_up", "actionable": false, "components": {"rsi": 1.0, "macd": -0.5, "ema": -1.0, "fear_greed": -0.08, "news": 0.45}, "ts": "2026-06-18T17:48:55.653226+00:00"}
+{"kind": "signal", "token": "CAKE", "score": -0.1622, "regime": "trend_up", "actionable": false, "components": {"rsi": -0.265, "macd": 1.0, "ema": -1.0, "fear_greed": -0.08, "news": -0.38}, "ts": "2026-06-18T17:48:55.653252+00:00"}
+{"kind": "signal", "token": "ETH", "score": -0.0772, "regime": "trend_up", "actionable": false, "components": {"rsi": 0.555, "macd": -1.0, "ema": 0.0, "fear_greed": -0.08, "news": 0.42}, "ts": "2026-06-18T17:48:55.653274+00:00"}
+{"kind": "signal", "token": "BTC", "score": 0.409, "regime": "trend_up", "actionable": true, "components": {"rsi": -0.04, "macd": 0.5, "ema": 1.0, "fear_greed": -0.08, "news": 0.02}, "ts": "2026-06-18T17:48:55.653296+00:00"}
+{"kind": "decision", "token": "ETH", "action": "close", "size_pct": 0.0, "confidence": 0.6, "rationale": "signal decayed (score=-0.0772)", "ts": "2026-06-18T17:48:55.653325+00:00"}
+{"kind": "fill", "token": "ETH", "action": "close", "size_usd": 0.0, "tx_hash": "0xMOCK0b3da264cbacc8b5", "reason": "close_allowed", "ts": "2026-06-18T17:48:55.653648+00:00"}
+{"kind": "decision", "token": "BTC", "action": "buy", "size_pct": 0.3, "confidence": 0.7045, "rationale": "long bias score=0.409 regime=trend_up", "ts": "2026-06-18T17:48:55.653969+00:00"}
+{"kind": "blocked", "token": "BTC", "action": "buy", "reason": "not_tradeable: off-universe", "ts": "2026-06-18T17:48:55.653992+00:00"}
+{"kind": "tick", "tick_id": "2026-06-18T17:48:55.654318+00:00", "equity": 198.963914, "drawdown": 0.01, "dq_headroom": 0.29, "ts": "2026-06-18T17:48:55.654321+00:00"}
+{"kind": "signal", "token": "BNB", "score": 0.459, "regime": "trend_up", "actionable": true, "components": {"rsi": 1.0, "macd": -0.5, "ema": 1.0, "fear_greed": 0.16, "news": 0.18}, "ts": "2026-06-18T17:48:55.654360+00:00"}
+{"kind": "signal", "token": "CAKE", "score": -0.0015, "regime": "trend_up", "actionable": false, "components": {"rsi": -0.65, "macd": -0.5, "ema": 1.0, "fear_greed": 0.16, "news": -0.3}, "ts": "2026-06-18T17:48:55.654384+00:00"}
+{"kind": "signal", "token": "ETH", "score": 0.363, "regime": "trend_up", "actionable": true, "components": {"rsi": 1.0, "macd": 0.5, "ema": 0.0, "fear_greed": 0.16, "news": -0.28}, "ts": "2026-06-18T17:48:55.654407+00:00"}
+{"kind": "signal", "token": "BTC", "score": 0.2312, "regime": "trend_up", "actionable": false, "components": {"rsi": -0.795, "macd": 0.5, "ema": 1.0, "fear_greed": 0.16, "news": -0.11}, "ts": "2026-06-18T17:48:55.654429+00:00"}
+{"kind": "decision", "token": "BNB", "action": "buy", "size_pct": 0.3, "confidence": 0.7295, "rationale": "long bias score=0.459 regime=trend_up", "ts": "2026-06-18T17:48:55.654456+00:00"}
+{"kind": "blocked", "token": "BNB", "action": "buy", "reason": "not_tradeable: off-universe", "ts": "2026-06-18T17:48:55.654478+00:00"}
+{"kind": "decision", "token": "ETH", "action": "buy", "size_pct": 0.3, "confidence": 0.6815, "rationale": "long bias score=0.363 regime=trend_up", "ts": "2026-06-18T17:48:55.654499+00:00"}
+{"kind": "fill", "token": "ETH", "action": "buy", "size_usd": 57.29, "tx_hash": "0xMOCK259e34716c772620", "reason": "approved size=$57.29 (budget_mult=0.96, dd=0.010)", "ts": "2026-06-18T17:48:55.654833+00:00"}

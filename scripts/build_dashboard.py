@@ -128,6 +128,12 @@ def build_data(with_wallet=True, with_market=True):
         "risk": {"kill": cfg["risk"]["drawdown_kill_pct"] * 100,
                  "stop": cfg["risk"]["per_position_stop_pct"] * 100, "policy": cfg["decision"]["policy"]},
         "blocked": len([r for r in rows if r.get("kind") == "blocked"]),
+        "activity": [
+            {"kind": r.get("kind"), "token": r.get("token", ""), "action": r.get("action", ""),
+             "reason": (r.get("reason") or r.get("note") or "")[:60], "tx": r.get("tx_hash") or r.get("tx"),
+             "ts": (r.get("ts") or "")[11:19]}
+            for r in rows if r.get("kind") in ("fill", "blocked", "x402", "position_stop", "kill_switch")
+        ][-12:][::-1],
     }
 
 
@@ -142,6 +148,15 @@ def main():
     html = TEMPLATE.replace("/*DATA*/", json.dumps(data))
     with open(os.path.join(ROOT, "dashboard", "index.html"), "w") as f:
         f.write(html)
+    # publish the raw decision log (tail) for reproducibility / judges
+    try:
+        from agent.agent import load_config
+        lp = os.path.join(ROOT, load_config(os.path.join(ROOT, "config.yaml"))["paths"]["decision_log"])
+        lines = open(lp).read().splitlines()[-2000:]
+        with open(os.path.join(ROOT, "dashboard", "decisions.jsonl"), "w") as f:
+            f.write("\n".join(lines))
+    except Exception:
+        pass
     m = data.get("market")
     print(f"-> dashboard (portfolio ${data['portfolio']['total_usd']}, "
           f"market={'live '+m['regime'] if m else 'n/a'}, {'live' if data['live'] else 'backtest'} chart)")
@@ -182,6 +197,12 @@ background-attachment:fixed;padding:28px 20px;-webkit-font-smoothing:antialiased
 .hchip .ha{color:var(--mut);font-weight:500;font-size:12px;margin-left:2px}
 .leadgrid{display:grid;grid-template-columns:1fr 1fr;gap:2px 30px}
 @media(max-width:720px){.leadgrid{grid-template-columns:1fr}}
+.act{display:flex;align-items:center;gap:12px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.05);font-size:12.5px}
+.act:last-child{border:0}
+.act .kd{font-weight:600;width:96px}
+.act .rs{flex:1;color:var(--mut)}
+.act .tm{color:var(--mut2);font-size:11px;font-variant-numeric:tabular-nums}
+.act a{color:var(--b);text-decoration:none}
 .lab{font-size:10.5px;letter-spacing:.7px;text-transform:uppercase;color:var(--mut);font-weight:600}
 .head{display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap}
 .title{font-size:18px;font-weight:700;display:flex;align-items:center;gap:10px}
@@ -278,6 +299,11 @@ background-attachment:fixed;padding:28px 20px;-webkit-font-smoothing:antialiased
   <div id="lead" class="leadgrid"></div>
 </div>
 
+<div class="card">
+  <div class="ph">Recent activity · decision log <span><a href="decisions.jsonl" style="color:var(--b);text-decoration:none">raw log ↓</a></span></div>
+  <div id="activity"></div>
+</div>
+
 <div class="card strip">
   <div class="c"><div class="k">Strategy</div><div class="v acc" id="pol"></div></div>
   <div class="c"><div class="k">Per-position stop</div><div class="v num" id="stop"></div></div>
@@ -332,6 +358,15 @@ if(mk){const[col,bg,nm]=REG[mk.regime]||REG.chop;
    <span class="bar"><b style="${p?'left:50%':'right:50%'};width:${w}%;background:${p?'var(--g)':'var(--r)'}"></b></span>
    <span class="sc num">${l.score>=0?'+':''}${l.score.toFixed(2)}</span></div>`;}).join('');
 }else $('mcard').style.display='none';
+
+// recent activity / decision log
+$('activity').innerHTML=((D.activity&&D.activity.length)?D.activity:[]).map(a=>{
+ const col=a.kind==='fill'?'var(--g)':a.kind==='blocked'?'var(--mut)':a.kind==='x402'?'var(--b)':'var(--r)';
+ const ex=a.kind==='x402'?'https://basescan.org/tx/':'https://bscscan.com/tx/';
+ const link=(a.tx&&(''+a.tx).startsWith('0x'))?` · <a href="${ex}${a.tx}" target="_blank">tx ↗</a>`:'';
+ const label=a.kind==='fill'?((a.action||'').toUpperCase()+' '+a.token):a.kind==='blocked'?('blocked '+a.token):a.kind==='x402'?'x402 paid':a.kind.replace('_',' ');
+ return `<div class="act"><span class="kd" style="color:${col}">${label}</span><span class="rs">${a.reason}${link}</span><span class="tm">${a.ts}</span></div>`;
+}).join('')||'<div class="rs" style="color:var(--mut2);font-size:12.5px">Holding cash in the downtrend. Maintenance trade keeps the daily minimum; rotations resume when the market turns up.</div>';
 
 // ---- chart (redesigned: y-axis ticks, baseline, perf-colored, hover pill) ----
 const MON=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
