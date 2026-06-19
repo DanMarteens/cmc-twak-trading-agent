@@ -147,7 +147,9 @@ twak:
 
 bnb_sdk:
   agent_name: cmc-twak-trading-agent
-  enabled: true                 # ERC-8004 identity (testnet) for special prize
+  enabled: true
+  agent_id: "138200"            # ERC-8004 identity minted on BSC mainnet (special prize)
+  # tx: https://bscscan.com/tx/0x64ffc8dbe7b38428bdc456839456fe12ab8a8702581ee2d679c5b21727eb45ca
 
 # --- Persistence ----------------------------------------------------------
 paths:
