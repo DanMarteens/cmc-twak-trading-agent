@@ -58,6 +58,16 @@ def fear_greed_component(fg: float) -> float:
     return _clip((50.0 - fg) / 50.0)
 
 
+def funding_component(funding_pct: float, scale: float) -> float:
+    """CMC derivatives funding rate, read contrarian: crowded longs (high positive
+    funding) -> caution (negative); negative funding -> opportunity. `scale` is the
+    funding % that maps to a full ±1. Absent funding (0.0) -> 0 contribution, so
+    the price-only backtest is unaffected."""
+    if not scale:
+        return 0.0
+    return _clip(-funding_pct / scale)
+
+
 @dataclass
 class TokenSignal:
     token: str
@@ -101,6 +111,8 @@ def score_token(token: str, data: Mapping, regime: Regime, cfg: Mapping) -> Toke
         "ema": _EMA_MAP.get(data.get("ema_trend", "flat"), 0.0),
         "fear_greed": fear_greed_component(data.get("fear_greed_index", 50.0)),
         "news": _clip(float(data.get("news_sentiment", 0.0))),
+        "funding": funding_component(float(data.get("funding_rate", 0.0)),
+                                     cfg["signal"].get("funding_scale", 0.05)),
     }
     raw = sum(comps[k] * w[k] for k in w)
 

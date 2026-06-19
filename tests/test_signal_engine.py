@@ -7,6 +7,15 @@ from agent.signal_engine import (
 )
 
 
+def test_funding_component_contrarian():
+    from agent.signal_engine import funding_component
+    # crowded longs (high +funding) -> caution (negative); negative funding -> +
+    assert funding_component(0.05, 0.05) == -1.0
+    assert funding_component(-0.05, 0.05) == 1.0
+    assert funding_component(0.0, 0.05) == 0.0     # absent funding -> no effect (backtest-safe)
+    assert funding_component(0.01, 0.0) == 0.0     # no scale -> no effect
+
+
 def test_rsi_component_directionality():
     # oversold -> long bias (+), overbought -> short bias (-)
     assert rsi_component(20, 30, 70) == 1.0

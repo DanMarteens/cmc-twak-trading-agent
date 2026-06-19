@@ -87,6 +87,7 @@ def _market(cfg):
         bullish = sum(1 for s in sigs.values() if s.score > 0)
         return {"regime": regime, "fg": round(float(any_d.get("fear_greed_index", 50))),
                 "dom": round(float(any_d.get("btc_dominance", 54)), 1),
+                "funding": round(float(any_d.get("funding_rate", 0)), 4),
                 "bullish": bullish, "total": len(sigs), "leaderboard": top}
     except Exception:
         return None
@@ -311,6 +312,7 @@ if(mk){const[col,bg,nm]=REG[mk.regime]||REG.chop;
    <div class="it fg"><div class="lab">Fear &amp; Greed — <b style="color:${col}">${mk.fg} · ${fl}</b></div>
      <div class="fgbar"><i style="left:${mk.fg}%"></i></div></div>
    <div class="it"><div class="lab">BTC dominance</div><div class="mkv num">${mk.dom}%</div></div>
+   <div class="it"><div class="lab">Funding (perps)</div><div class="mkv num" style="color:${mk.funding>=0?'var(--g)':'var(--r)'}">${mk.funding>=0?'+':''}${mk.funding}%</div></div>
    <div class="it"><div class="lab">Bullish now</div><div class="mkv num"><b class="pos">${mk.bullish}</b> / ${mk.total}</div></div>
   </div>`;
  $('lead').innerHTML=mk.leaderboard.map((l,i)=>{const w=Math.min(50,Math.abs(l.score)*50),p=l.score>=0;

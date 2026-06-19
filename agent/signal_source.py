@@ -77,9 +77,10 @@ class TwakCmcSignalClient:
             return {
                 "fear_greed_index": _num(_dig(g, "sentiment", "fear_greed", "current", "index", default=50)),
                 "btc_dominance": _num(_dig(g, "dominance", "btc", "current", default="54%")),
+                "funding_rate": _num(_dig(g, "leverage", "funding_rate", "average", "current", default=0)),
             }
         except Exception:
-            return {"fear_greed_index": 50.0, "btc_dominance": 54.0}
+            return {"fear_greed_index": 50.0, "btc_dominance": 54.0, "funding_rate": 0.0}
 
     def get_snapshot(self, tokens: list[str]) -> dict[str, dict]:
         macro = self._macro_signals()

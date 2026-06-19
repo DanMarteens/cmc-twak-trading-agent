@@ -71,6 +71,8 @@ signal:
     ema: 0.30
     fear_greed: 0.10
     news: 0.10
+    funding: 0.10        # CMC derivatives funding rate, contrarian (0 in price-only backtest)
+  funding_scale: 0.05    # funding % that maps to a full ±1 contribution
   rsi_oversold: 30
   rsi_overbought: 70
   entry_threshold: 0.30         # |score| must exceed this to act
