@@ -167,15 +167,21 @@ background-attachment:fixed;padding:28px 20px;-webkit-font-smoothing:antialiased
 .wrap{max-width:1080px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
 /* one unified card */
 .card{background:linear-gradient(180deg,rgba(255,255,255,.052),rgba(255,255,255,.022));
- border:1px solid var(--bd);border-radius:18px;padding:20px;backdrop-filter:blur(18px);
+ border:1px solid var(--bd);border-radius:20px;padding:24px 26px;backdrop-filter:blur(18px);
  -webkit-backdrop-filter:blur(18px);box-shadow:0 8px 36px rgba(0,0,0,.32)}
 .g2{display:grid;grid-template-columns:1.12fr 1fr;gap:14px;align-items:start}
 .g2c{display:grid;grid-template-columns:1.7fr 1fr;gap:14px;align-items:start}
 @media(max-width:840px){.g2,.g2c{grid-template-columns:1fr}}
-.mkt{display:flex;align-items:center;gap:26px;flex-wrap:wrap}
+.mkt{display:flex;align-items:center;gap:34px;flex-wrap:wrap}
 .mkt .it{display:flex;flex-direction:column;gap:5px}
 .mkt .fg{flex:1;min-width:230px}
-.mkv{font-size:17px;font-weight:700}
+.mkv{font-size:19px;font-weight:700}
+.prow{display:flex;align-items:flex-end;gap:34px;flex-wrap:wrap;margin-top:8px}
+.holds{display:flex;gap:10px;flex-wrap:wrap;flex:1;justify-content:flex-end}
+.hchip{display:flex;align-items:center;gap:9px;background:var(--cell);border:1px solid var(--bd);border-radius:13px;padding:11px 16px;font-weight:600}
+.hchip .ha{color:var(--mut);font-weight:500;font-size:12px;margin-left:2px}
+.leadgrid{display:grid;grid-template-columns:1fr 1fr;gap:2px 30px}
+@media(max-width:720px){.leadgrid{grid-template-columns:1fr}}
 .lab{font-size:10.5px;letter-spacing:.7px;text-transform:uppercase;color:var(--mut);font-weight:600}
 .head{display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap}
 .title{font-size:18px;font-weight:700;display:flex;align-items:center;gap:10px}
@@ -238,21 +244,21 @@ background-attachment:fixed;padding:28px 20px;-webkit-font-smoothing:antialiased
   <div class="chips" id="chips"></div>
 </div>
 
-<div class="g2">
-  <div class="card">
-    <div class="lab">Portfolio · on-chain</div>
-    <div class="big num" id="pv">—</div>
-    <div class="sub" id="pvsub"></div>
-    <div id="holds" style="margin-top:14px"></div>
+<div class="card">
+  <div class="lab">Portfolio · on-chain</div>
+  <div class="prow">
+    <div><div class="big num" id="pv">—</div><div class="sub" id="pvsub"></div></div>
+    <div id="holds" class="holds"></div>
   </div>
-  <div class="card">
-    <div class="lab">Strategy track record · <span id="trk"></span></div>
-    <div class="ret num" id="ret"></div>
-    <div class="sub" id="vsmkt"></div>
-    <div class="kv">
-      <div class="c"><div class="k">Max drawdown</div><div class="v pos num" id="dd"></div></div>
-      <div class="c"><div class="k">DQ headroom</div><div class="v acc num" id="hr"></div></div>
-    </div>
+</div>
+
+<div class="card">
+  <div class="lab">Strategy track record · <span id="trk"></span></div>
+  <div class="mkt" style="margin-top:10px">
+    <div class="it"><div class="ret num" id="ret"></div><div class="sub" id="vsmkt"></div></div>
+    <div class="it"><div class="lab">Max drawdown</div><div class="mkv pos num" id="dd"></div></div>
+    <div class="it"><div class="lab">DQ headroom</div><div class="mkv acc num" id="hr"></div></div>
+    <div class="it"><div class="lab">Backtest trades</div><div class="mkv num" id="tr"></div></div>
   </div>
 </div>
 
@@ -261,16 +267,15 @@ background-attachment:fixed;padding:28px 20px;-webkit-font-smoothing:antialiased
   <div id="market"></div>
 </div>
 
-<div class="g2c">
-  <div class="card">
-    <div class="ph"><span id="clab"></span><span id="cmeta"></span></div>
-    <div class="cw" id="cw"><div class="tip" id="tip"></div></div>
-    <div class="lg" id="lg"></div>
-  </div>
-  <div class="card">
-    <div class="ph">Momentum leaderboard <span>now</span></div>
-    <div id="lead"></div>
-  </div>
+<div class="card">
+  <div class="ph"><span id="clab"></span><span id="cmeta"></span></div>
+  <div class="cw" id="cw"><div class="tip" id="tip"></div></div>
+  <div class="lg" id="lg"></div>
+</div>
+
+<div class="card">
+  <div class="ph">Momentum leaderboard <span>live · top movers now</span></div>
+  <div id="lead" class="leadgrid"></div>
 </div>
 
 <div class="card strip">
@@ -297,15 +302,15 @@ const pv=D.portfolio.total_usd;
 if(pv!=null){const t0=performance.now();(function a(n){let p=Math.min((n-t0)/750,1);p=1-Math.pow(1-p,3);
  $('pv').textContent='$'+(pv*p).toFixed(2);if(p<1)requestAnimationFrame(a);})(t0);}else $('pv').textContent='—';
 $('pvsub').textContent=D.portfolio.holdings.length?'across '+D.portfolio.holdings.length+' assets':'fund wallet to begin';
-$('holds').innerHTML=D.portfolio.holdings.map(h=>`<div class="rowline"><span class="aset">
- <img class="ico" src="${h.logo}" onerror="this.outerHTML='<i class=dotk></i>'"/>${h.sym}</span>
- <span class="sub num">${h.amount} · $${h.usd.toFixed(2)}</span></div>`).join('');
+$('holds').innerHTML=D.portfolio.holdings.map(h=>`<div class="hchip">
+ <img class="ico" src="${h.logo}" onerror="this.outerHTML='<i class=dotk></i>'"/>${h.sym}
+ <span class="ha num">${h.amount} · $${h.usd.toFixed(2)}</span></div>`).join('');
 
 const t=D.track,edge=(t.return_pct-t.buyhold_pct);
 $('trk').textContent='1y backtest';
 $('ret').textContent=(t.return_pct>=0?'+':'')+t.return_pct+'%';$('ret').className='ret num '+(t.return_pct>=0?'pos':'neg');
 $('vsmkt').innerHTML=`vs market <b class="neg">${t.buyhold_pct}%</b> · <b class="pos">+${edge.toFixed(0)} pts edge</b>`;
-$('dd').textContent=t.maxdd_pct+'%';$('hr').textContent=(t.dq_pct-t.maxdd_pct).toFixed(0)+'%';
+$('dd').textContent=t.maxdd_pct+'%';$('hr').textContent=(t.dq_pct-t.maxdd_pct).toFixed(0)+'%';$('tr').textContent=t.trades;
 $('pol').textContent=D.risk.policy;$('stop').textContent=D.risk.stop+'%';$('kill').textContent=D.risk.kill+'%';
 $('toks').textContent=D.track.tokens;$('blk').textContent=D.blocked;
 $('aid').textContent='#'+D.agent_id;$('addr').textContent=D.address.slice(0,6)+'…'+D.address.slice(-4);
