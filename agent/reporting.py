@@ -70,7 +70,11 @@ def report(cfg: dict) -> dict:
     rows = load_decisions(cfg["paths"]["decision_log"])
 
     fills = [r for r in rows if r.get("kind") == "fill"]
-    blocks = [r for r in rows if r.get("kind") == "blocked"]
+    # "*_allowed" markers (hold_allowed/close_allowed) are NOT blocked trades -- a hold
+    # is the agent choosing to do nothing, not the risk gate refusing a trade. Exclude
+    # them so the rule-adherence count reflects real blocks only.
+    blocks = [r for r in rows if r.get("kind") == "blocked"
+              and not str(r.get("reason", "")).endswith("_allowed")]
     block_reasons = Counter(b["reason"].split(":")[0] for b in blocks)
 
     init = state.get("initial_equity", 0) or 1
