@@ -1,8 +1,8 @@
 # CMC Special Prize: #CMCAgentHub tweet ($2K, 10 winners)
 
 Judged on **Creativity, Engagement, Usefulness**. Must: hashtag `#CMCAgentHub`,
-mention the Hackathon, and be in BNB Hack. **Tag all 3 sponsor accounts** —
-`@coinmarketcap` · `@bnbchain` · `@trustwallet` — an organizer confirmed they
+mention the Hackathon, and be in BNB Hack. **Tag all 3 sponsor accounts**:
+`@coinmarketcap` · `@bnbchain` · `@trustwallet`. An organizer confirmed they
 monitor every tweet and repost the best ones.
 
 **Format: a thread** (threads beat single tweets on engagement and let us show
@@ -11,68 +11,70 @@ the demo video to T2.
 
 ---
 
-## Tweet 1 (the human hook + required tags + dashboard image)
+## Tweet 1 (curiosity-gap hook + required tags + dashboard image)
 
-> I got tired of watching charts, so I built something to watch them for me.
+> Every trading bot looks like a genius. Right up until the market drops. Then it
+> goes quiet, and so does the account.
 >
-> It's a trading agent — reads the market every 15 minutes and signs its own swaps
-> on BSC. No human in the loop. It just runs.
+> So I built one with the opposite goal, and it's trading live on BSC for BNB Hack.
+> Fully autonomous, no human in the loop.
 >
-> Here's how it works, and where I kept myself honest. 🧵
+> How it works (and what it can't do): 🧵
 >
 > @coinmarketcap #CMCAgentHub · @trustwallet · @bnbchain · BNB Hack
 >
 > [attach: dashboard screenshot]
 
-## Tweet 2 (the design conviction + proof + demo video)
+## Tweet 2 (the stakes + proof + demo video)
 
-> I didn't build it to win a pump. I built it to survive a crash.
+> The scary part of a bot isn't a bad day. It's the drawdown that wipes you out
+> while you sleep. This contest disqualifies you at around 30%.
 >
-> The contest kicks you out past ~30% drawdown — so when the market turns, it
-> rotates to cash instead of getting greedy. Backtested over a market that dropped
-> 47%, it was down ~12% and never got near the line.
+> So mine doesn't chase. When the market turns, it rotates to cash. I ran it through
+> a year where the market fell 47%. It was down about 12, and never went near the line.
 >
-> It's a simulation, not a promise — but that's exactly the behavior I wanted.
+> (A backtest, so a simulation. But that's the behaviour I was after.)
 >
 > [attach: demo video]
 
-## Tweet 3 (CMC usefulness — no magic, just good data)
+## Tweet 3 (CMC usefulness, demystified)
 
-> No secret indicator. No magic. Just good data, read the same way every time.
+> No crystal ball. It reads the same things you would, just every 15 minutes,
+> without flinching.
 >
-> Every 15 min it pulls from CoinMarketCap's Agent Hub:
-> 🔹 momentum per coin — RSI, MACD, moving averages
-> 🔹 the mood — Fear & Greed, BTC dominance, funding
+> Per coin: RSI, MACD, moving averages.
+> The room: Fear & Greed, BTC dominance, funding.
 >
-> All of it collapses into one score per coin. That's the call.
+> All from CoinMarketCap's Agent Hub, melted into one score per coin. That score is
+> the decision.
 
-## Tweet 4 (sponsors — each one earns its place)
+## Tweet 4 (sponsors, each earns its place)
 
-> Three integrations, and I made sure each one actually pulls weight:
-> 🔹 @coinmarketcap Agent Hub — the eyes
-> 🔹 @trustwallet Agent Kit — signs every swap, and even pays for premium signals
->   itself over x402
-> 🔹 @bnbchain ERC-8004 — an on-chain identity it writes its own record to
+> Three pieces, and I refused to let any of them be a logo on a slide:
+> 🔹 @coinmarketcap Agent Hub: the eyes
+> 🔹 @trustwallet Agent Kit: signs every swap, and even pays for premium signals
+>   itself via x402
+> 🔹 @bnbchain ERC-8004: an on-chain ID it writes its own record to
 >
-> Open source. Every decision logged. #CMCAgentHub #BNBHack
+> Open source. Every call logged. #CMCAgentHub #BNBHack
 
-## Tweet 5 (on-chain track record — the genuinely cool part, with the receipt)
+## Tweet 5 (the on-chain reveal, with the receipt)
 
-> My favourite part: it keeps its own track record on-chain.
+> Here's the part I keep showing people. The agent grades its own homework on-chain.
 >
-> An @bnbchain ERC-8004 record the agent updates itself — equity, return, trades.
-> Not a screenshot I could fake. You read it straight off the contract.
+> Equity, return, trade count, written to an @bnbchain ERC-8004 record it updates
+> itself. I can't photoshop a blockchain. Read it off the contract yourself.
 >
 > [attach: bscscan tx of the attestation]
 
 ## Tweet 6 (the honest part nobody posts)
 
-> And the part most bots skip — what it can't do:
-> 🔹 spot only, no shorts or leverage (that's what the kit supports)
-> 🔹 only the 149 eligible tokens, nothing off-list
-> 🔹 conservative — in a full bull run, riskier bots will beat it
+> And what it can't do, since nobody posts this part:
+> 🔹 spot only. no shorts, no leverage.
+> 🔹 only the 149 eligible tokens, nothing off-list.
+> 🔹 boring on purpose. a wild bull run will beat it.
 >
-> I'll take surviving the week over winning a sprint.
+> I'd rather be standing at the end of the week than first at the halfway mark.
 
 ---
 
