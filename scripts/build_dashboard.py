@@ -515,7 +515,7 @@ background-attachment:fixed;padding:40px 20px 32px;-webkit-font-smoothing:antial
   <div class="tabs" id="tabs"></div>
   <div class="trgrid">
     <div>
-      <div class="lab" id="retlab">Return</div>
+      <div class="lab" id="retlab">PnL</div>
       <div class="edge num" id="ret"></div>
       <div class="sub" id="retsub" style="margin-top:8px"></div>
     </div>
@@ -593,7 +593,7 @@ function _slice(h){if(h==null||!FULL.length)return FULL.slice();const cut=D.gene
 function applyRange(h,label){
  const s=_slice(h),eq=s.map(p=>p[1]);
  const ret=(eq.length>1&&eq[0])?(eq[eq.length-1]/eq[0]-1)*100:0, dd=_mdd(eq);
- $('retlab').textContent='Return · '+label;
+ $('retlab').textContent='PnL · '+label;
  $('ret').textContent=(ret>=0?'+':'')+ret.toFixed(2)+'%';$('ret').className='edge num'+(ret>=0?'':' neg');
  if(eq.length)$('retsub').textContent=fmtpx(eq[0])+' → '+fmtpx(eq[eq.length-1]);
  $('dd').textContent=dd.toFixed(2)+'%';$('hr').textContent=Math.max(0,(t.dq_pct-dd)).toFixed(0)+'%';
