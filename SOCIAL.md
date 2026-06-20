@@ -13,12 +13,14 @@ the demo video to T2.
 
 ## Tweet 1 (pain hook + required tags + dashboard image)
 
-> You go to sleep. The market dumps 30%. You wake up wrecked.
+> I built a bot to trade my crypto so I'd stop checking charts at 3am.
 >
-> We got tired of it. So we built CTA, an AI agent that trades for you and
-> actually knows when to get out.
+> It reads the market, makes its own calls, and signs its own swaps. I don't touch it.
 >
-> It runs on @coinmarketcap #CMCAgentHub signals, trades via @trustwallet, on @bnbchain. Built for the BNB Hack. 🧵👇
+> And when everything dumps? It does the one thing I never could: nothing.
+>
+> Meet CTA 🧵👇
+> @coinmarketcap #CMCAgentHub · @trustwallet · @bnbchain · BNB Hack
 >
 > [attach: dashboard screenshot]
 
@@ -45,16 +47,24 @@ the demo video to T2.
 >
 > CMC Agent Hub is its eyes. The risk rules are its discipline.
 
-## Tweet 4 (sponsors + close)
+## Tweet 4 (sponsors — all doing real work, not logos)
 
-> One agent. Three pieces:
-> 🔹 @coinmarketcap Agent Hub for the signals
-> 🔹 @trustwallet Agent Kit for real on-chain trades
-> 🔹 @bnbchain ERC-8004 for its on-chain identity
+> One agent. Three sponsors, each load-bearing:
+> 🔹 @coinmarketcap Agent Hub — 4 live signals drive every decision
+> 🔹 @trustwallet Agent Kit — signs its own swaps AND pays for data via x402
+> 🔹 @bnbchain ERC-8004 — writes its track record on-chain (verifiable)
 >
-> Open source. Logs every move. Runs 24/7.
+> Open source. Runs 24/7. #CMCAgentHub #BNBHack
+
+## Tweet 5 (the on-chain-reputation flex — most novel, attach the bscscan link)
+
+> The wild part: my agent writes its own P&L to the blockchain.
 >
-> #CMCAgentHub #BNBHack
+> Not a screenshot — an @bnbchain ERC-8004 on-chain reputation record it updates
+> itself, daily. Anyone can verify it.
+>
+> An AI trader with a verifiable on-chain track record. 🤖🔗
+> [attach: bscscan tx of the attestation]
 
 ---
 

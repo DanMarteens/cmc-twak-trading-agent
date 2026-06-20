@@ -31,12 +31,16 @@ Run `python -m agent.reporting` → point at blocked-trade reasons.
 > "And every trade it refuses to make is logged with a reason. So you can check
 > its homework."
 
-## 2:00 — TWAK execution + on-chain identity (25s)
-Show a live `twak swap --quote-only` quote, then `twak compete status`
-(registered) and the ERC-8004 `agentId`.
-> "The trades are real — spot swaps through Trust Wallet's Agent Kit. The agent is
-> registered on-chain for the competition, and it has its own on-chain identity.
-> All three sponsors, working as one."
+## 2:00 — Three sponsors, all load-bearing (30s)
+Show the dashboard's "How it works · sponsor stack" card, then cut to a terminal
+for the proof of each: a live `twak swap --quote-only` quote, a `twak x402 request`
+firing (the $0.001 payment + the bias it returns), and finally bscscan open on the
+ERC-8004 attestation tx with `twak erc8004 get-metadata` reading its track record back.
+> "Every sponsor here does real work. CoinMarketCap's Agent Hub is its eyes — four
+> live signals on every decision. Trust Wallet's Agent Kit signs its own swaps, and
+> even pays for premium data itself over x402. And on BNB Chain it has a real
+> identity — it writes its own track record on-chain, so anyone can verify how it
+> actually did. Not a screenshot. The blockchain."
 
 ## 2:25 — Close (10s)
 Show the GitHub repo URL.
@@ -47,5 +51,6 @@ Show the GitHub repo URL.
 **Delivery tips:** smile when you say the hook and the close — it carries through
 the voice. Pause a beat between sections. Don't rush the numbers (47%, 14%).
 
-**B-roll to capture:** dashboard, a tick in `journalctl`/logs, the decisions.jsonl
-tail, `twak compete status` JSON, the repo.
+**B-roll to capture:** dashboard (esp. the sponsor-stack card), a tick in
+`journalctl`/logs, the decisions.jsonl tail, `twak compete status` JSON, a
+`twak x402 request` firing, the bscscan ERC-8004 attestation tx, the repo.
