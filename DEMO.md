@@ -37,8 +37,9 @@ VOICEOVER:
 > "Since the beginning of this year, everything's looked red. Looks like we're going
 > bearish now. Fear and Greed is down at 20, and the market's off by about half from
 > its peak. So honestly, you'd think this is the worst possible time to be running a
-> trading bot. Which is exactly why I built one for it. Anyone's bot looks brilliant
-> when everything's pumping. The real test is a market like this, and most of them
+> trading bot. But this is exactly when you want an agent that actually knows how to
+> trade in conditions like these. Anyone's bot looks brilliant when everything's
+> pumping. The real test is a market like this, and most of them
 > quietly blow up. So for BNB Hack I built an agent to survive the down months, not
 > just ride the up ones. It runs on its own, reads the market every 15 minutes, and
 > signs its own swaps on BSC. Let me show you."

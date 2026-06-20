@@ -17,8 +17,8 @@ the demo video to T2.
 > the market's off about half from its peak. You'd think this is the worst possible
 > time to run a trading bot.
 >
-> It's exactly why I built one for it, and it's trading live on BSC for BNB Hack.
-> Fully autonomous.
+> That's exactly when you want an agent that actually knows how to trade a market
+> like this. So I built one, and it's live on BSC for BNB Hack. Fully autonomous.
 >
 > How it works (and what it can't do): 🧵
 >
