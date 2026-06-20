@@ -1,63 +1,73 @@
-# Demo video script (~2.5 min)
+# Demo video script (~3 min)
 
-Goal: a working end-to-end agent + all three sponsors + honest results. Record
-screen + voiceover. Same voice as the X thread (SOCIAL.md) — first person, short
-human sentences, talk don't read. Each beat echoes a tweet so the video and the
-thread feel like one piece.
+Goal: an honest engineering walkthrough, not an ad. Tone is a dev showing their
+work to other devs — calm, specific, first person. The screen does the talking:
+real terminal, real dashboard, real on-chain transactions. State the limitations
+out loud; that's what makes the strong parts believable. Everything shown is
+verifiable (GitHub + bscscan), and we say so.
 
-## 0:00 — Hook (15s) · mirrors Tweet 1
-Show the dashboard (`open dashboard/index.html`) full screen.
-> "I built a bot to trade my crypto so I'd stop checking charts at 3am. It reads
-> the market, makes its own calls, and signs its own swaps. I don't touch it. And
-> when everything dumps? It does the one thing I never could — nothing. This is CTA."
+Rule for delivery: no superlatives, no "amazing/wild/game-changing", no
+exclamation hooks. If a number is on screen, read it as-is. If something is a
+simulation, call it a simulation.
 
-## 0:15 — CMC Agent Hub (30s) · mirrors Tweet 3
-Run `python scripts/verify_cmc.py` → 12 tools. Then a live snapshot / log line:
-BTC RSI / MACD / EMA, Fear & Greed, BTC dominance.
-> "No more 3am chart watching. No more panic selling at the bottom. Every 15
-> minutes it reads the market for me — Fear and Greed, Bitcoin dominance, momentum
-> on every coin. CoinMarketCap's Agent Hub is its eyes."
+## 0:00 — What this is (20s)
+Show the dashboard, then the running service (`systemctl status` / a log tail).
+> "This is a trading agent I built for BNB Hack. It runs on a small server, reads
+> the market every 15 minutes, and signs its own spot swaps on BSC. I want to walk
+> through how it actually works and show you it running — not a mockup. Everything
+> here is in the repo, and the on-chain parts you can check yourself."
 
-## 0:45 — Strategy + risk (40s) · mirrors Tweet 2 (the setup)
-Show `agent/decision.py` (RotationDecider) and `agent/risk_gate.py`.
-> "Here's what nobody admits. Most bots print in a bull run, then blow up the
-> second the market turns. So I built this one backwards. In an uptrend it holds
-> the strongest coins. In a downtrend it steps back to cash. And every trade
-> passes a strict risk gate — stop-losses, a daily pause, a kill switch. Staying
-> alive matters more than being greedy."
+## 0:20 — Where the decisions come from (35s)
+Run `python scripts/verify_cmc.py` (tool list), then a real snapshot / log line:
+RSI, MACD, EMA per token, plus Fear & Greed and BTC dominance.
+> "Every decision starts with data from CoinMarketCap's Agent Hub. Per coin it
+> pulls momentum — RSI, MACD, moving averages — and on top of that the market-wide
+> stuff: Fear and Greed, Bitcoin dominance, funding rates. Those get combined into
+> one score per token. This is the raw input, straight from the API."
 
-## 1:25 — Proof: it survives the crash (35s) · mirrors Tweet 2 (the proof)
+## 0:55 — The strategy, and what it won't do (45s)
+Show `agent/decision.py` and `agent/risk_gate.py`. Be straight about the tradeoff.
+> "The logic is deliberately simple. In an uptrend it rotates into the strongest
+> coins; in a downtrend it steps back toward cash. I'll be honest about the
+> tradeoff: this is a conservative design. If the week is a straight pump, a more
+> aggressive bot will out-return it. I optimized for not blowing up instead,
+> because the contest disqualifies you past about 30% drawdown. It's also spot
+> only — no shorts, no leverage — because that's what the Trust Wallet kit
+> supports. Before any trade, it goes through a risk gate: per-position stops, a
+> daily loss pause, and a hard kill switch."
+
+## 1:40 — Proof, and what the proof is worth (40s)
 Run `python scripts/backtest.py --policy rotation --universe core --period year`,
-then `python -m agent.reporting` → point at blocked-trade reasons.
-> "Does it actually work? Same code, real prices. We ran it through a real crash —
-> the market fell 47%, and CTA was down around 12. Never came close to getting
-> disqualified. Surviving the dip is the whole game. And every trade it refuses to
-> make is logged with a reason, so you can check its homework."
+then `python -m agent.reporting` to show blocked-trade reasons.
+> "Here's a backtest on a year of real prices — and I want to be clear this is a
+> simulation, not a promise. Over a stretch where the market fell about 47%, the
+> agent was down around 12 and never hit the disqualification line. That's the
+> behavior I was after. And every trade it decides not to make is logged with a
+> reason, so the decision log is auditable rather than a black box."
 
-## 2:00 — Three sponsors, all real (30s) · mirrors Tweet 4
+## 2:20 — The three integrations, with receipts (35s)
 Show the dashboard "sponsor stack" card, then a terminal: a `twak swap
---quote-only` quote, a `twak x402 request` firing (the $0.001 payment + the bias),
-and bscscan open on the ERC-8004 attestation tx with `twak erc8004 get-metadata`.
-> "One agent, three sponsors — and each one does real work. CoinMarketCap is its
-> eyes. Trust Wallet's Agent Kit signs its own swaps, and even pays for premium
-> data itself over x402. And on BNB Chain it has a real identity."
+--quote-only`, a `twak x402 request` returning a price-paid signal, and bscscan
+open on the ERC-8004 metadata transaction with `twak erc8004 get-metadata`.
+> "Three integrations, and each one does real work rather than just being wired in.
+> CoinMarketCap is the data layer. Trust Wallet's kit signs the swaps and pays
+> about a tenth of a cent per premium signal over x402 — here's the request. And on
+> BNB Chain the agent has an ERC-8004 identity that it writes its own track record
+> to, on-chain. That's the transaction, and you can read the value straight off the
+> contract."
 
-## 2:20 — The wild part (15s) · mirrors Tweet 5
-Hold on the bscscan attestation tx.
-> "And this is the wild part. It writes its own track record to the blockchain.
-> Not a screenshot — an on-chain record it updates itself. Anyone can verify how it
-> actually did. An AI trader with a real, on-chain track record."
-
-## 2:35 — Close (10s)
-Show the GitHub repo URL.
-> "It's open source, it logs every decision, and it's been running around the
-> clock. That's CTA — thanks for watching!"
+## 2:55 — Close (15s)
+Show the GitHub repo and the dashboard URL.
+> "That's the agent. It's open source, the decision log is public, and the on-chain
+> records are there if you want to verify any of this independently. Thanks for
+> taking a look."
 
 ---
-**Delivery tips:** smile on the hook and the close — it carries through the voice.
-Pause a beat between sections. Don't rush the numbers (47%, 12%). Say "the wild
-part" and "the blockchain" slowly — those are the lines that land.
+**Delivery tips:** speak at a normal pace, like you're explaining it to a
+colleague. Let the terminal output sit on screen long enough to read. Don't sell
+the numbers — just show them. The honesty in the strategy and proof sections is
+the point; don't soften it.
 
-**B-roll to capture:** dashboard (esp. the sponsor-stack card), a tick in
-`journalctl`/logs, the decisions.jsonl tail, `twak compete status` JSON, a
-`twak x402 request` firing, the bscscan ERC-8004 attestation tx, the repo.
+**B-roll to capture:** dashboard (incl. the sponsor-stack card), `systemctl
+status`, a tick in the logs, the decisions.jsonl tail, `twak compete status`, a
+`twak x402 request` firing, the bscscan ERC-8004 transaction, the repo.
