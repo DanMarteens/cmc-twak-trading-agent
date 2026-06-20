@@ -51,7 +51,9 @@ risk:
   min_trades_per_day: 1
   min_trades_per_week: 7
   force_daily_trade: true       # if a UTC day has 0 trades, make 1 maintenance trade
-  max_trades_per_day: 12
+  max_trades_per_day: 24        # backstop, not the primary throttle. Churn is now held by the
+                                # re-entry cooldown + min_seconds + entry_threshold, so the daily
+                                # cap is just headroom for legitimate rebalancing (raised 12 -> 24).
   min_seconds_between_trades: 1800  # LIVE pacing: >=30 min between trades so the day's
                                     # budget isn't burned in the first few hours. Closes are
                                     # EXEMPT (risk_gate lets exits through), so this only paces
@@ -111,9 +113,12 @@ decision:
                                    # return contest). Backtest: this BEAT pure-cash in the bear
                                    # year (-9.7% vs -12.6%). Stops + daily pause + kill cap risk.
   rotation_downtrend_min_momentum: 0.20  # ...and only if momentum is clearly positive
-  rotation_reentry_cooldown_ticks: 4     # hysteresis: after rotating OUT of a name, wait this
-                                         # many ticks before rotating back IN (live: ~1h at 15-min
-                                         # ticks). Kills buy->sell->buy thrash on boundary names.
+  rotation_reentry_cooldown_hours: 4     # hysteresis: after rotating OUT of a name, wait this
+                                         # many HOURS before rotating back IN. Time-based, so it is
+                                         # consistent in live and backtest. Kills the buy->sell->buy
+                                         # thrash on boundary names without holding a strong name out
+                                         # for half a day (12h backtested slightly worse on the
+                                         # short week sample; 4h is the gentler middle).
 
 llm:
   # Provider-agnostic (agent/llm.py): auto-picks by key — GEMINI_API_KEY -> Gemini

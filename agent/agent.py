@@ -261,6 +261,7 @@ def process_tick(cfg, state, snapshot, prices, decider, executor, log,
         "max_trades_left_today": cfg["risk"]["max_trades_per_day"] - state.trades_today,
     }
 
+    setattr(decider, "_now", now_ts)                     # for time-based re-entry cooldown
     decisions = decider.decide(snapshot, signals, portfolio, risk_limits)
     tradeable = set(cfg["twak"]["token_contracts"])      # eligible + has a contract
 
