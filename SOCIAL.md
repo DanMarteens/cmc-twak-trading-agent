@@ -13,8 +13,9 @@ the demo video to T2.
 
 ## Tweet 1 (bear-market hook + required tags + dashboard image)
 
-> Fear & Greed is sitting at 20. The market's been red all year, down about half
-> from its peak. You'd think this is the worst possible time to run a trading bot.
+> Since the start of this year, everything's looked red. Fear & Greed is down at 20,
+> the market's off about half from its peak. You'd think this is the worst possible
+> time to run a trading bot.
 >
 > It's exactly why I built one for it, and it's trading live on BSC for BNB Hack.
 > Fully autonomous.
