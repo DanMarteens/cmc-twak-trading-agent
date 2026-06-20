@@ -11,62 +11,68 @@ the demo video to T2.
 
 ---
 
-## Tweet 1 (what it is + required tags + dashboard image)
+## Tweet 1 (the human hook + required tags + dashboard image)
 
-> I built a trading agent for BNB Hack. It reads the market every 15 minutes and
-> signs its own spot swaps on BSC — no human in the loop.
+> I got tired of watching charts, so I built something to watch them for me.
 >
-> I'm not going to oversell it. Here's how it works, and what it can't do. 🧵
+> It's a trading agent — reads the market every 15 minutes and signs its own swaps
+> on BSC. No human in the loop. It just runs.
+>
+> Here's how it works, and where I kept myself honest. 🧵
 >
 > @coinmarketcap #CMCAgentHub · @trustwallet · @bnbchain · BNB Hack
 >
 > [attach: dashboard screenshot]
 
-## Tweet 2 (the honest design goal + proof + demo video)
+## Tweet 2 (the design conviction + proof + demo video)
 
-> The goal wasn't max returns. It was: don't blow up.
+> I didn't build it to win a pump. I built it to survive a crash.
 >
-> The contest disqualifies you past ~30% drawdown, so in downtrends it rotates to
-> cash. In a backtest over a market that fell ~47%, it was down ~12% and never hit
-> the DQ line. A simulation, not a promise — but that's the behavior I designed for.
+> The contest kicks you out past ~30% drawdown — so when the market turns, it
+> rotates to cash instead of getting greedy. Backtested over a market that dropped
+> 47%, it was down ~12% and never got near the line.
+>
+> It's a simulation, not a promise — but that's exactly the behavior I wanted.
 >
 > [attach: demo video]
 
-## Tweet 3 (CMC usefulness — concrete, no secret sauce)
+## Tweet 3 (CMC usefulness — no magic, just good data)
 
-> Every decision starts with CoinMarketCap's Agent Hub.
+> No secret indicator. No magic. Just good data, read the same way every time.
 >
-> Per coin: RSI, MACD, moving averages.
-> Market-wide: Fear & Greed, BTC dominance, funding rates.
+> Every 15 min it pulls from CoinMarketCap's Agent Hub:
+> 🔹 momentum per coin — RSI, MACD, moving averages
+> 🔹 the mood — Fear & Greed, BTC dominance, funding
 >
-> Those combine into one score per token. That's the whole input — no secret sauce.
+> All of it collapses into one score per coin. That's the call.
 
-## Tweet 4 (sponsors — each doing real work, not logos)
+## Tweet 4 (sponsors — each one earns its place)
 
-> Three integrations, each load-bearing rather than decorative:
-> 🔹 @coinmarketcap Agent Hub — the data layer
-> 🔹 @trustwallet Agent Kit — signs the swaps, and pays for premium signals via x402
-> 🔹 @bnbchain ERC-8004 — an on-chain identity it writes its track record to
+> Three integrations, and I made sure each one actually pulls weight:
+> 🔹 @coinmarketcap Agent Hub — the eyes
+> 🔹 @trustwallet Agent Kit — signs every swap, and even pays for premium signals
+>   itself over x402
+> 🔹 @bnbchain ERC-8004 — an on-chain identity it writes its own record to
 >
-> Open source, public decision log. #CMCAgentHub #BNBHack
+> Open source. Every decision logged. #CMCAgentHub #BNBHack
 
-## Tweet 5 (on-chain track record — stated plainly, with the receipt)
+## Tweet 5 (on-chain track record — the genuinely cool part, with the receipt)
 
-> One part I haven't seen elsewhere: the agent writes its own track record on-chain.
+> My favourite part: it keeps its own track record on-chain.
 >
-> An @bnbchain ERC-8004 record it updates itself — equity, return, trade count. You
-> can read it straight off the contract. No trust required, just verify.
+> An @bnbchain ERC-8004 record the agent updates itself — equity, return, trades.
+> Not a screenshot I could fake. You read it straight off the contract.
 >
 > [attach: bscscan tx of the attestation]
 
-## What it can't do (optional T6 — leaning into the honesty)
+## Tweet 6 (the honest part nobody posts)
 
-> To be straight about the limits:
-> - spot only, no shorts or leverage (that's what the kit supports)
-> - it trades the 149 eligible tokens, nothing off-list
-> - conservative by design — in a straight bull run, riskier bots will out-return it
+> And the part most bots skip — what it can't do:
+> 🔹 spot only, no shorts or leverage (that's what the kit supports)
+> 🔹 only the 149 eligible tokens, nothing off-list
+> 🔹 conservative — in a full bull run, riskier bots will beat it
 >
-> I'd rather it survive the week than top a sprint.
+> I'll take surviving the week over winning a sprint.
 
 ---
 
