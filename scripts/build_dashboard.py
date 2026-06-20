@@ -511,7 +511,7 @@ background-attachment:fixed;padding:40px 20px 32px;-webkit-font-smoothing:antial
 </div>
 
 <div class="card">
-  <div class="ph">How it works · sponsor stack <span>all 3, load-bearing</span></div>
+  <div class="ph">sponsor stack</div>
   <div id="stack"></div>
 </div>
 
