@@ -249,7 +249,9 @@ def _activity(rows, cfg, st):
                 entry = (sum(p * s for p, s in ls) / cost) if (ls and all(p for p, _ in ls) and cost) else None
                 lots[tok] = []; realized = r.get("realized")
                 pnl = (realized / cost * 100) if (realized is not None and cost) else None
-                exitpx = px if px else (entry * (1 + pnl / 100) if (entry and pnl is not None) else None)
+                # derive exit from entry + realized P&L so the price move always matches the P&L
+                # (exact for real fills; keeps reconstructed entries internally consistent)
+                exitpx = (entry * (1 + pnl / 100)) if (entry and pnl is not None) else px
                 items.append({"kind": "fill", "action": "close", "token": tok,
                               "entry": entry, "exit": exitpx, "pnl": round(pnl, 2) if pnl is not None else None,
                               "realized": realized, "value": round(cost, 2) if cost else None,
