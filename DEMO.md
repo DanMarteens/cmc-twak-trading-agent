@@ -34,13 +34,18 @@ SCREEN, in order:
    `systemctl status cmc-twak-agent`  (the green "active (running)" line is the shot)
 
 VOICEOVER:
-> "Look at the market right now. It's red, people are losing money, and honestly
-> this is the worst possible time to be running a trading bot. Which is exactly why
-> I built one for it. Anyone's bot looks brilliant when everything's pumping. The
-> real test is a month like this one, and most of them quietly blow up. So for BNB
-> Hack I built an agent to survive the down months, not just ride the up ones. It
-> runs on its own, reads the market every 15 minutes, and signs its own swaps on
-> BSC. Let me show you."
+> "Right now the Fear and Greed index is sitting at 20. That's deep fear. The whole
+> crypto market has been red all year, down by about half from its peak. So
+> honestly, you'd think this is the worst possible time to be running a trading bot.
+> Which is exactly why I built one for it. Anyone's bot looks brilliant when
+> everything's pumping. The real test is a market like this, and most of them
+> quietly blow up. So for BNB Hack I built an agent to survive the down months, not
+> just ride the up ones. It runs on its own, reads the market every 15 minutes, and
+> signs its own swaps on BSC. Let me show you."
+
+NOTE on the opener shot: this is the perfect moment to film the CoinMarketCap
+homepage with the Fear & Greed gauge on 20 and the 1Y market-cap chart in the red.
+It anchors the claim AND it is literally the data the agent reads.
 
 ## 0:25 · How it sees the market (35s)
 SCREEN, in order:
