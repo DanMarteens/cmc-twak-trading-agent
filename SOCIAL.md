@@ -32,7 +32,8 @@ the demo video to T2.
 > while you sleep. This contest disqualifies you at around 30%.
 >
 > So mine doesn't chase. When the market turns, it rotates to cash. I ran it through
-> a year where the market fell 47%. It was down about 12, and never went near the line.
+> a year where the market fell 47%. It lost less than half of that, and never went
+> near the disqualification line.
 >
 > (A backtest, so a simulation. But that's the behaviour I was after.)
 >
