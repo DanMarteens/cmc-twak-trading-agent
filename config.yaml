@@ -52,7 +52,11 @@ risk:
   min_trades_per_week: 7
   force_daily_trade: true       # if a UTC day has 0 trades, make 1 maintenance trade
   max_trades_per_day: 12
-  min_seconds_between_trades: 0     # 0 = let a tick deploy its full target set (matches backtest); 15-min ticks already space activity
+  min_seconds_between_trades: 1800  # LIVE pacing: >=30 min between trades so the day's
+                                    # budget isn't burned in the first few hours. Closes are
+                                    # EXEMPT (risk_gate lets exits through), so this only paces
+                                    # new entries; rotation still exits freely. (Backtest forces
+                                    # this to 0 — coarse bars can't represent intra-day pacing.)
 
   # "Keep capital deployed": any hour starting with a sub-$1 portfolio scores 0%.
   # Never let total portfolio value approach $1; keep a minimum in-scope holding.
@@ -85,8 +89,9 @@ signal:
   dominance_scale: 12.0  # dominance points away from ref that map to a full ±1 tilt
   rsi_oversold: 30
   rsi_overbought: 70
-  entry_threshold: 0.25         # |score| must exceed this to act (lower = participate more,
-                                # but too low churns in chop; 0.25 is the tuned middle)
+  entry_threshold: 0.30         # |score| must exceed this to act (lower = participate more,
+                                # but too low churns in chop). Raised 0.25 -> 0.30 to cut
+                                # marginal-momentum entries that flip-flop at the boundary.
   chop_dampen: 0.30             # multiply score by this in chop regime
   history_period: week          # twak price history window for live TA (~3h bars)
 
@@ -106,6 +111,9 @@ decision:
                                    # return contest). Backtest: this BEAT pure-cash in the bear
                                    # year (-9.7% vs -12.6%). Stops + daily pause + kill cap risk.
   rotation_downtrend_min_momentum: 0.20  # ...and only if momentum is clearly positive
+  rotation_reentry_cooldown_ticks: 4     # hysteresis: after rotating OUT of a name, wait this
+                                         # many ticks before rotating back IN (live: ~1h at 15-min
+                                         # ticks). Kills buy->sell->buy thrash on boundary names.
 
 llm:
   # Provider-agnostic (agent/llm.py): auto-picks by key — GEMINI_API_KEY -> Gemini

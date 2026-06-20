@@ -135,6 +135,12 @@ class RotationDecider:
         self.down_k = d.get("rotation_downtrend_topk", 2)
         self.down_min_mom = d.get("rotation_downtrend_min_momentum", 0.2)
         self.tradeable = set(cfg["twak"]["token_contracts"])
+        # Hysteresis: after rotating OUT of a name, don't rotate back IN for this many
+        # ticks. Kills the buy->sell->buy thrash on names whose momentum hovers at the
+        # entry boundary (the main source of tx-cost churn). 0 = disabled (old behavior).
+        self.reentry_cooldown = d.get("rotation_reentry_cooldown_ticks", 0)
+        self._tick = 0
+        self._exited_tick: dict[str, int] = {}
 
     def decide(self, snapshot, signals: dict[str, TokenSignal], portfolio, risk_limits):
         cand = [s for s in signals.values() if s.token in self.tradeable]
@@ -152,13 +158,18 @@ class RotationDecider:
         else:
             targets = [s.token for s in ranked if s.score > self.min_mom][: self.k]
 
+        self._tick += 1
         decisions = []
         for t in held:                         # exit names no longer targeted
             if t not in targets:
+                self._exited_tick[t] = self._tick   # arm the re-entry cooldown
                 decisions.append(_dec(t, "close", 0.0, 0.7, f"rotate out ({regime.value})"))
         per_name = min(self.cfg["risk"]["max_position_pct"], 1.0 / max(self.k, 1))
         for s in ranked:                       # enter/keep targets
             if s.token in targets and s.token not in held:
+                # hysteresis: skip names we just rotated out of (anti-churn)
+                if self._tick - self._exited_tick.get(s.token, -10**9) < self.reentry_cooldown:
+                    continue
                 conf = min(0.95, 0.55 + abs(s.score) / 2)
                 decisions.append(_dec(s.token, "buy", per_name, conf,
                                       f"rotate in: rank momentum={s.score} ({regime.value})"))
