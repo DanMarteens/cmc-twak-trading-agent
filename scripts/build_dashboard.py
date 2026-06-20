@@ -598,7 +598,7 @@ $('activity').innerHTML=((D.activity&&D.activity.length)?D.activity:[]).map(a=>{
  if(a.kind==='fill'){
   const buy=a.action==='buy', col=buy?'var(--g)':'var(--b)', tag=buy?'BUY':'CLOSE';
   const ic=a.logo?`<img class="ico sm" src="${a.logo}" onerror="fbk(this,'${a.token}')"/>`:`<span class="ico sm lt">${(a.token||'').slice(0,3)}</span>`;
-  const prices=buy?(a.entry?fmtpx(a.entry):'entered'):((a.entry?fmtpx(a.entry):'—')+' → '+(a.exit?fmtpx(a.exit):'—'));
+  const prices=buy?(a.entry?fmtpx(a.entry):'entered'):((a.entry&&a.exit)?(fmtpx(a.entry)+' → '+fmtpx(a.exit)):'');
   const pnl=(!buy&&a.pnl!=null)?`<span class="apnl" style="color:${a.pnl>=0?'var(--g)':'var(--r)'}">${a.pnl>=0?'+':''}${a.pnl}%</span>`:'<span class="apnl"></span>';
   const val=a.value!=null?`<span class="aval">$${a.value.toFixed(2)}</span>`:'<span class="aval"></span>';
   return `<div class="act">${ic}<span class="kd" style="color:${col}">${tag}</span><span class="tkn">${a.token||''}</span><span class="rs num">${prices}</span>${pnl}${val}<span class="tm">${t}</span></div>`;
