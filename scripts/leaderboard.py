@@ -14,6 +14,10 @@ Usage:
 """
 import json, os, sys, time, urllib.request
 from eth_hash.auto import keccak
+from eth_abi import encode as abi_encode, decode as abi_decode
+
+MULTICALL3 = "0xcA11bde05977b3631167028862bE2a173976CA11"
+SEL_AGG3 = "0x" + keccak(b"aggregate3((address,bool,bytes)[])")[:4].hex()
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # ARCHIVE_RPC (NodeReal) is needed ONLY to (re-)enumerate participants from historical
@@ -108,29 +112,49 @@ def token_decimals(tokens):
         cache = {}
     missing = [(s, a) for s, a in tokens.items() if s not in cache]
     if missing:
-        res = rpc_batch([call_data(a, SEL_DEC) for _, a in missing])
+        res = multicall([(a, SEL_DEC) for _, a in missing])
         for (s, _), r in zip(missing, res):
             cache[s] = int(r, 16) if r and r != "0x" else 18
         json.dump(cache, open(DEC_F, "w"))
     return cache
 
 
+def multicall(pairs):
+    """pairs = [(target, calldata_hex), ...] -> [returndata_hex|None]. One Multicall3
+    eth_call returns hundreds of results, so the whole valuation is a few requests
+    (under any free-RPC rate limit). Uses the free RPC by default."""
+    url = RPC or FREE_RPC
+    out = []
+    for i in range(0, len(pairs), 600):
+        chunk = pairs[i:i + 600]
+        tuples = [(t, True, bytes.fromhex(cd[2:])) for t, cd in chunk]
+        data = SEL_AGG3 + abi_encode(["(address,bool,bytes)[]"], [tuples]).hex()
+        got = None
+        for _ in range(3):
+            try:
+                r = _post({"jsonrpc": "2.0", "id": 1, "method": "eth_call",
+                           "params": [{"to": MULTICALL3, "data": data}, "latest"]}, url).get("result")
+                if r and r != "0x":
+                    dec = abi_decode(["(bool,bytes)[]"], bytes.fromhex(r[2:]))[0]
+                    got = ["0x" + rd.hex() if ok else None for ok, rd in dec]
+                    break
+            except Exception:
+                time.sleep(1.5)
+        out += got if got else [None] * len(chunk)
+    return out
+
+
 def value_agents(agents, tokens, prices, decimals):
     syms = list(tokens)
-    calls = []
-    for ag in agents:
-        for s in syms:
-            calls.append(call_data(tokens[s], SEL_BAL + "0" * 24 + ag[2:]))
-    res = rpc_batch(calls)
-    vals = {}
-    k = 0
+    pairs = [(tokens[s], SEL_BAL + "0" * 24 + ag[2:]) for ag in agents for s in syms]
+    res = multicall(pairs)
+    vals, k = {}, 0
     for ag in agents:
         tot = 0.0
         for s in syms:
             r = res[k]; k += 1
             if r and r != "0x":
-                bal = int(r, 16) / (10 ** decimals.get(s, 18))
-                tot += bal * float(prices.get(s, 0) or 0)
+                tot += (int(r, 16) / (10 ** decimals.get(s, 18))) * float(prices.get(s, 0) or 0)
         vals[ag] = round(tot, 2)
     return vals
 
