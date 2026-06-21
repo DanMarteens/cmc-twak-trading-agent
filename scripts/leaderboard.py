@@ -118,10 +118,33 @@ def load_tokens():
         prices.update({k: v for k, v in fresh.items() if v})
     except Exception:
         pass
+    prices.update(coingecko_prices(tokens))         # freshest source (by contract, BSC)
     for s in tokens:
         if s in STABLES:
             prices[s] = 1.0
     return tokens, prices, decimals
+
+
+def coingecko_prices(tokens):
+    """Current USD prices by BSC contract address (free, no key). Returns {sym: price}
+    for whatever resolves; callers keep prior prices for the rest."""
+    addr_sym = {a.lower(): s for s, a in tokens.items()}
+    addrs = list(addr_sym)
+    out = {}
+    for i in range(0, len(addrs), 100):
+        chunk = addrs[i:i + 100]
+        url = ("https://api.coingecko.com/api/v3/simple/token_price/binance-smart-chain"
+               "?contract_addresses=" + ",".join(chunk) + "&vs_currencies=usd")
+        try:
+            req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+            data = json.load(urllib.request.urlopen(req, timeout=40))
+            for a, v in data.items():
+                if v.get("usd") and a.lower() in addr_sym:
+                    out[addr_sym[a.lower()]] = float(v["usd"])
+        except Exception:
+            pass
+        time.sleep(2.5)
+    return out
 
 
 def token_decimals(tokens):
