@@ -33,7 +33,6 @@ PART_F = os.path.join(ROOT, "dashboard", "participants.json")
 BASE_F = os.path.join(ROOT, "dashboard", "lb_baseline.json")
 DEC_F = os.path.join(ROOT, "dashboard", "lb_decimals.json")
 OUT_F = os.path.join(ROOT, "dashboard", "leaderboard.json")
-OURS = "0x32a84f2cf8d55a8ec5414d7dc42b0d873a98ab19"
 
 
 def _post(payload, url=None):
@@ -234,7 +233,7 @@ def main():
         v = vals.get(ag, 0.0)
         b = baseline.get(ag)
         ret = round((v / b - 1) * 100, 2) if (b and b > 0) else None
-        rows.append({"agent": ag, "value": v, "ret_pct": ret, "ours": ag == OURS})
+        rows.append({"agent": ag, "value": v, "ret_pct": ret})
     rows.sort(key=lambda r: (r["ret_pct"] if r["ret_pct"] is not None else -1e9, r["value"]), reverse=True)
     for i, r in enumerate(rows):
         r["rank"] = i + 1
@@ -242,14 +241,9 @@ def main():
            "has_baseline": bool(baseline), "rows": rows}
     json.dump(out, open(OUT_F, "w"))
 
-    ourrow = next((r for r in rows if r["ours"]), None)
-    print(f"participants: {len(agents)} | baseline: {'yes' if baseline else 'NO (current value only)'}")
-    if ourrow:
-        print(f"OUR RANK: #{ourrow['rank']}/{len(agents)}  value=${ourrow['value']}  ret={ourrow['ret_pct']}")
-    print("top 10:")
+    print(f"participants: {len(agents)} | baseline: {'yes' if baseline else 'no'}")
     for r in rows[:10]:
-        tag = "  <-- US" if r["ours"] else ""
-        print(f"  #{r['rank']:>2} {r['agent']}  ${r['value']:>8}  ret={r['ret_pct']}{tag}")
+        print(f"  #{r['rank']:>2} {r['agent']}  ${r['value']:>8}  ret={r['ret_pct']}")
 
 
 if __name__ == "__main__":
