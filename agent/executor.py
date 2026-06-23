@@ -20,6 +20,7 @@ from __future__ import annotations
 import json
 import subprocess
 import time
+from decimal import Decimal
 from typing import Optional
 
 from .logbook import DecisionLog, utc_now_iso
@@ -122,6 +123,7 @@ class TwakExecutor:
         self.quote = cfg["quote_asset"]                       # USDT (symbol leg)
         self.slip = str(cfg["risk"]["max_slippage_pct"] * 100)  # 0.01 -> "1"
         self.contracts = cfg["twak"]["token_contracts"]
+        self.address = cfg["twak"]["agent_address"]
 
     def _addr(self, token: str) -> str:
         addr = self.contracts.get(token)
@@ -132,12 +134,41 @@ class TwakExecutor:
     def _run(self, args: list[str]) -> dict:
         proc = subprocess.run(["twak", *args, "--json"], capture_output=True,
                               text=True, timeout=180)
-        if proc.returncode != 0:
-            raise RuntimeError(f"twak failed: {proc.stderr.strip() or proc.stdout.strip()}")
-        # twak prints a human line before the JSON block; take the JSON object.
-        out = proc.stdout
+        # twak prints a human line before the JSON block; the structured result
+        # (incl. {error, errorCode} on failure) is the JSON object on stdout.
+        out = proc.stdout or ""
         brace = out.find("{")
-        return json.loads(out[brace:]) if brace >= 0 else {}
+        data = {}
+        if brace >= 0:
+            try:
+                data = json.loads(out[brace:])
+            except Exception:
+                data = {}
+        if proc.returncode != 0 or data.get("error"):
+            code = data.get("errorCode") or data.get("code") or ""
+            err = data.get("error") or data.get("message") or proc.stderr.strip() or out.strip()
+            raise RuntimeError(f"twak failed{f' [{code}]' if code else ''}: {err}")
+        return data
+
+    def _live_balance(self, token) -> tuple[int, int]:
+        """Real on-chain balance as (atomic_units, decimals) from twak balance.
+
+        We sell from THIS, never from the quote-derived Position.qty: the quote is
+        the *expected* output, so exec variance + float rounding make pos.qty a hair
+        larger than what's actually in the wallet, and the swap reverts (no tx hash).
+        twak returns full-precision `available` + raw atomic units; decimals are
+        recovered exactly so the sell qty can be capped at the real balance.
+        """
+        r = self._run(["balance", "--address", self.address, "--token",
+                       self._addr(token), "--chain", self.chain])
+        atomic = int(((r.get("raw") or {}).get("amounts") or {}).get("available") or 0)
+        if atomic <= 0:
+            return 0, 18
+        human = Decimal(str(r.get("available") or "0"))
+        for dec in range(0, 37):
+            if human != 0 and human.scaleb(dec) == Decimal(atomic):
+                return atomic, dec
+        return atomic, 18
 
     def _buy_cmd(self, token, size_usd, quote_only=False) -> list[str]:
         cmd = ["swap", "--usd", str(round(size_usd, 6)), self.quote, self._addr(token),
@@ -170,9 +201,21 @@ class TwakExecutor:
             pos = state.positions.get(token)
             if not pos or pos.qty <= 0:
                 return None
-            res = self._run(self._sell_cmd(token, pos.qty))
+            atomic, decimals = self._live_balance(token)         # sell the REAL balance, not the quote
+            if atomic <= 0:
+                # nothing left on-chain (already exited, or dust) -> reconcile, don't swap
+                _apply_close(state, token, price)
+                state.complete_order(oid, "", price)
+                state.last_trade_ts = now if now is not None else time.time()
+                log.event("close_reconciled", token=token, note="zero on-chain balance")
+                return None
+            dust = max(1, atomic // 100000)                      # shave <=0.001% so qty never exceeds balance
+            qty = Decimal(atomic - dust).scaleb(-decimals)
+            res = self._run(self._sell_cmd(token, format(qty, "f")))
+            sold = float(qty)
+            pos.qty = sold                                       # reconcile accounting to the real amount sold
             usdt_out = _lead_float(res.get("output"))
-            fill_px = (usdt_out / pos.qty) if pos.qty else price
+            fill_px = (usdt_out / sold) if sold else price
             _apply_close(state, token, fill_px)
         else:
             log.event("unsupported_action", token=token, action=action,
