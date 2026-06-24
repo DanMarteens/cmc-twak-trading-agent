@@ -103,3 +103,17 @@ def test_trace_explains_entry_filter_rejection(cfg):
     )
     assert trace["best_validated"]["entry_filter_reason"] == "late_hot_24h:0.240>0.180"
     assert trace["reason"] == "entry_filter_rejected:late_hot_24h:0.240>0.180"
+
+
+def test_trace_uses_strategy_debug_suppression_source(cfg):
+    cfg = _cfg(cfg)
+    snap = {"COAI": {"round_trip_loss_pct": 1.2, "risk_level": "low", "history_bars": 42}}
+    signals = {"COAI": _sig("COAI", 0.5)}
+    trace = _decision_trace(
+        cfg, "tick", snap, signals,
+        {"cash_usd": 10, "total_equity_usd": 10, "positions": {}},
+        {"signal_streaks": {"COAI": 3}}, [], {"COAI"},
+        strategy_debug={"suppression_source": "GeminiReview:vetoed_all_buys"},
+    )
+    assert trace["reason"] == "GeminiReview:vetoed_all_buys"
+    assert trace["strategy_debug"]["suppression_source"] == "GeminiReview:vetoed_all_buys"

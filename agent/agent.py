@@ -133,7 +133,8 @@ def _trace_token(token: str | None, signal=None, snapshot: dict | None = None,
 
 
 def _decision_trace(cfg, tick_id, snapshot, signals, portfolio, risk_limits,
-                    decisions, tradeable, *, risk_outcomes=None) -> dict:
+                    decisions, tradeable, *, risk_outcomes=None,
+                    strategy_debug=None) -> dict:
     """Build the internal causal trace for a tick.
 
     The trace answers "why no trade?" and "why this trade?" using the same
@@ -202,7 +203,9 @@ def _decision_trace(cfg, tick_id, snapshot, signals, portfolio, risk_limits,
     else:
         # If we got here, the deterministic candidate was likely removed by an
         # upstream hysteresis/rotation rule or the LLM second gate.
-        final_action, reason = "hold", "candidate_suppressed_by_rotation_or_llm_gate"
+        debug_source = (strategy_debug or {}).get("suppression_source")
+        final_action = "hold"
+        reason = debug_source or "candidate_suppressed_by_rotation_or_llm_gate"
 
     return {
         "kind": "decision_trace",
@@ -231,6 +234,7 @@ def _decision_trace(cfg, tick_id, snapshot, signals, portfolio, risk_limits,
                                        tradeable=tradeable, cfg=cfg) if valid_ranked else None,
         "candidate_decisions": decisions,
         "risk_outcomes": risk_outcomes or [],
+        "strategy_debug": strategy_debug or {},
         "final_action": final_action,
         "reason": reason,
     }
@@ -654,6 +658,7 @@ def process_tick(cfg, state, snapshot, prices, decider, executor, log,
 
     setattr(decider, "_now", now_ts)                     # for time-based re-entry cooldown
     decisions = decider.decide(snapshot, signals, portfolio, risk_limits)
+    strategy_debug = getattr(decider, "last_debug", {}) or {}
     # deny_buy is entry-only and conditional: a quarantined token can buy again
     # only after UniverseManager records a successful executable round-trip.
     tradeable = tradeable_buy_tokens(cfg)
@@ -746,7 +751,8 @@ def process_tick(cfg, state, snapshot, prices, decider, executor, log,
             filled_rotation_closes.add(token)
 
     log.write(_decision_trace(cfg, tick_id, snapshot, signals, portfolio, risk_limits,
-                              decisions, tradeable, risk_outcomes=risk_outcomes))
+                              decisions, tradeable, risk_outcomes=risk_outcomes,
+                              strategy_debug=strategy_debug))
 
     # final equity mark + persist
     state.mark_equity(prices, tick_id)

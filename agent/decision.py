@@ -90,6 +90,8 @@ class StrategyState:
     validated: set[str] = field(default_factory=set)
     eligible: list[str] = field(default_factory=list)
     targets: list[str] = field(default_factory=list)
+    rejects: dict[str, str] = field(default_factory=dict)
+    anti_churn: dict[str, str] = field(default_factory=dict)
     gross: float = 0.0
     target_value: float = 0.0
     top5_active: bool = False
@@ -251,15 +253,30 @@ class EntryGate:
 
     def allows(self, signal: TokenSignal, state: StrategyState,
                snapshot: dict, risk_limits: dict) -> bool:
+        return self.reject_reason(signal, state, snapshot, risk_limits) is None
+
+    def reject_reason(self, signal: TokenSignal, state: StrategyState,
+                      snapshot: dict, risk_limits: dict) -> str | None:
         if signal.token in state.held:
-            return True
+            return None
         threshold = (self.strategy.down_min_mom
                      if state.regime is Regime.TREND_DOWN else self.strategy.min_mom)
-        if signal.token not in state.validated or signal.score <= threshold:
-            return False
+        if signal.token not in state.validated:
+            return "EntryGate:not_runtime_validated"
+        if signal.score <= threshold:
+            return f"EntryGate:score_below_threshold:{signal.score:.3f}<={threshold:.3f}"
         fresh, _ = self.strategy._entry_classification(signal, state.regime,
                                                        snapshot, state.quality)
-        return fresh and self.confirmed(signal, threshold, state.held, risk_limits)
+        if not fresh:
+            _, reason = self.strategy._entry_classification(signal, state.regime,
+                                                            snapshot, state.quality)
+            return f"EntryGate:{reason}"
+        if not self.confirmed(signal, threshold, state.held, risk_limits):
+            streak = int(risk_limits.get("signal_streaks", {}).get(signal.token, 0))
+            required = int(self.strategy.cfg.get("decision", {})
+                           .get("signal_confirmation", {}).get("required_ticks", 2))
+            return f"EntryGate:confirmation_streak:{streak}<{required}"
+        return None
 
     def kind(self, signal: TokenSignal, state: StrategyState, snapshot: dict) -> str:
         return self.strategy._entry_classification(signal, state.regime,
@@ -356,6 +373,7 @@ class AntiChurnPolicy:
     def apply_target_hysteresis(self, state: StrategyState,
                                 signals: dict[str, TokenSignal],
                                 snapshot: dict, portfolio: dict) -> None:
+        state.anti_churn = {}
         for token in state.held:
             if token not in state.eligible or token in state.targets:
                 continue
@@ -370,6 +388,10 @@ class AntiChurnPolicy:
             weakest = min(state.targets, key=lambda t: state.quality[t])
             hurdle = self.strategy._rotation_hurdle_for_held(token, state.regime, portfolio)
             if state.quality[weakest] - state.quality[token] < hurdle:
+                state.anti_churn[token] = (
+                    f"AntiChurn:kept_held_over_{weakest}:"
+                    f"edge={state.quality[weakest] - state.quality[token]:.3f}<hurdle={hurdle:.3f}"
+                )
                 state.targets[state.targets.index(weakest)] = token
 
     def can_reenter(self, token: str, portfolio: dict) -> bool:
@@ -379,6 +401,17 @@ class AntiChurnPolicy:
             float(persisted_exited_at.get(token, -1e18) or -1e18),
         )
         return self.strategy._now - last_exit >= self.strategy.reentry_cooldown_sec
+
+    def reentry_reject_reason(self, token: str, portfolio: dict) -> str | None:
+        persisted_exited_at = portfolio.get("rotation_exited_at", {}) or {}
+        last_exit = max(
+            float(self.strategy._exited_at.get(token, -1e18) or -1e18),
+            float(persisted_exited_at.get(token, -1e18) or -1e18),
+        )
+        remaining = self.strategy.reentry_cooldown_sec - (self.strategy._now - last_exit)
+        if remaining > 0:
+            return f"AntiChurn:reentry_cooldown:{remaining:.0f}s_remaining"
+        return None
 
 
 # --- Rotation decider (cross-sectional momentum) -------------------------------
@@ -503,6 +536,7 @@ class RotationDecider:
         self.min_micro_profit_sell_usd = float(exit_cfg.get("min_micro_profit_sell_usd", 1.0))
         self._now = 0.0                      # set by process_tick each tick (now_ts)
         self._exited_at: dict[str, float] = {}
+        self.last_debug: dict = {}
         self.ranker = CandidateRanker(self)
         self.entry_gate = EntryGate(self)
         self.exit_gate = ExitGate(self)
@@ -511,6 +545,60 @@ class RotationDecider:
 
     def _target_limit(self, regime: Regime) -> int:
         return self.down_k if regime is Regime.TREND_DOWN else self.k
+
+    def _debug_token(self, signal: TokenSignal | None, state: StrategyState | None,
+                     snapshot: dict | None = None) -> dict | None:
+        if signal is None:
+            return None
+        d = (snapshot or {}).get(signal.token, {})
+        out = {
+            "token": signal.token,
+            "score": round(float(signal.score), 4),
+            "quality": (round(float(state.quality.get(signal.token)), 4)
+                        if state and signal.token in state.quality else None),
+            "validated": bool(state and signal.token in state.validated),
+            "held": bool(state and signal.token in state.held),
+            "target": bool(state and signal.token in state.targets),
+        }
+        for k in ("return_6h", "return_24h", "cmc_pct_1h", "cmc_pct_24h",
+                  "cmc_pct_7d", "x402_token_score", "cmc_score",
+                  "round_trip_loss_pct", "token_risk_score"):
+            if k in d:
+                out[k] = d.get(k)
+        if state and signal.token in state.rejects:
+            out["reject_reason"] = state.rejects[signal.token]
+        if state and signal.token in state.anti_churn:
+            out["anti_churn"] = state.anti_churn[signal.token]
+        return out
+
+    def _set_debug(self, state: StrategyState | None, decisions: list[dict],
+                   snapshot: dict, suppression_source: str | None = None) -> None:
+        if state is None:
+            self.last_debug = {
+                "layer": "RotationDecider",
+                "suppression_source": suppression_source or "CandidateRanker:no_candidates",
+                "candidate_decisions": decisions,
+            }
+            return
+        top_signals = state.ranked[:8]
+        top = [self._debug_token(s, state, snapshot) for s in top_signals]
+        debug_tokens = {s.token for s in state.ranked[:20]} | set(state.held) | set(state.targets)
+        self.last_debug = {
+            "layer": "RotationDecider",
+            "regime": state.regime.value,
+            "held": sorted(state.held),
+            "validated": sorted(state.validated),
+            "eligible": state.eligible,
+            "targets": state.targets,
+            "gross": round(float(state.gross), 4),
+            "target_value": round(float(state.target_value), 4),
+            "top5_active": state.top5_active,
+            "top_ranked": top,
+            "rejects": {k: v for k, v in state.rejects.items() if k in debug_tokens},
+            "anti_churn": dict(state.anti_churn),
+            "candidate_decisions": decisions,
+            "suppression_source": suppression_source,
+        }
 
     def _needs_catchup(self, risk_limits: dict) -> bool:
         rank = risk_limits.get("leaderboard_rank")
@@ -781,9 +869,11 @@ class RotationDecider:
     def decide(self, snapshot, signals: dict[str, TokenSignal], portfolio, risk_limits):
         state = self.ranker.build_state(snapshot, signals, portfolio)
         if state is None:
+            self._set_debug(None, [], snapshot, "CandidateRanker:no_candidates")
             return []
 
         if state.regime is Regime.CHOP:
+            self._set_debug(state, [], snapshot, "RegimeGate:chop")
             return []                          # hold current; stops still run upstream
 
         def eligible_target(s):
@@ -791,10 +881,18 @@ class RotationDecider:
                 # Held-token health rule: do not keep a decayed position just
                 # because no new token is compelling.  This is strategy, not a
                 # manual call: score below the configured floor exits to cash.
-                return self.exit_gate.healthy(s, state, snapshot, portfolio)
+                reason = self.exit_gate.reason(s, state, snapshot, portfolio)
+                if reason:
+                    state.rejects[s.token] = f"ExitGate:{reason}"
+                    return False
+                return True
             # New entries/rotate-ins require durable execution validation before
             # they can become targets.  High CMC momentum alone cannot bypass it.
-            return self.entry_gate.allows(s, state, snapshot, risk_limits)
+            reason = self.entry_gate.reject_reason(s, state, snapshot, risk_limits)
+            if reason:
+                state.rejects[s.token] = reason
+                return False
+            return True
 
         state.eligible = [s.token for s in state.ranked if eligible_target(s)]
         state.targets = state.eligible[:self._target_limit(state.regime)]
@@ -825,11 +923,26 @@ class RotationDecider:
         for s in state.ranked:                 # enter/keep targets
             if s.token in state.targets and s.token not in state.held:
                 # hysteresis: skip names we rotated out of within the cooldown (anti-churn)
-                if not self.anti_churn.can_reenter(s.token, portfolio):
+                reentry_reason = self.anti_churn.reentry_reject_reason(s.token, portfolio)
+                if reentry_reason:
+                    state.rejects[s.token] = reentry_reason
                     continue
                 intent = self.sizing.buy_intent(s, state, snapshot, portfolio)
                 if intent:
                     decisions.append(intent.as_decision())
+        suppression = None
+        if not decisions:
+            if state.targets and state.held and set(state.targets).issubset(state.held):
+                suppression = "TargetGate:already_holding_target"
+            elif state.targets:
+                blocked = [state.rejects.get(t) for t in state.targets if t in state.rejects]
+                suppression = blocked[0] if blocked else "SizingPolicy:no_cash_or_target_already_met"
+            elif state.rejects:
+                first = state.ranked[0].token if state.ranked else None
+                suppression = state.rejects.get(first) or next(iter(state.rejects.values()))
+            else:
+                suppression = "TargetGate:no_eligible_targets"
+        self._set_debug(state, decisions, snapshot, suppression)
         return decisions
 
 
@@ -846,15 +959,23 @@ class LLMDecider:
     def __init__(self, cfg: dict, fallback=None):
         self.cfg = cfg
         self.fallback = fallback or RuleBasedDecider(cfg)
+        self.last_debug: dict = {}
 
     def decide(self, snapshot, signals, portfolio, risk_limits):
         setattr(self.fallback, "_now", getattr(self, "_now", 0.0))
         candidates = self.fallback.decide(snapshot, signals, portfolio, risk_limits)
+        base_debug = dict(getattr(self.fallback, "last_debug", {}) or {})
+        self.last_debug = {**base_debug, "ai_review": {"active": False}}
         if not self.cfg.get("llm", {}).get("second_gate", False) or not candidates:
             return candidates
         exits = [d for d in candidates if d.get("action") in ("close", "sell", "trim")]
         reviewable = [d for d in candidates if d.get("action") not in ("close", "sell", "trim")][:5]
         if not reviewable:
+            self.last_debug = {**base_debug, "ai_review": {
+                "active": True,
+                "reviewable": [],
+                "passed_through": "de-risking_only",
+            }}
             return candidates
         payload = build_snapshot_payload(snapshot, signals, portfolio, risk_limits)
         focused_tokens = {d["token"] for d in reviewable}
@@ -880,6 +1001,9 @@ class LLMDecider:
                 model = _validate(json.loads(s).get("decisions", []))
                 approved = {(d["token"], d["action"]): d for d in model}
                 out = []
+                approved_tokens = []
+                reduced = []
+                vetoed = []
                 for candidate in candidates:
                     # Never let an LLM veto de-risking.
                     if candidate["action"] in ("close", "sell", "trim"):
@@ -894,12 +1018,62 @@ class LLMDecider:
                         if keep["size_pct"] > 0:
                             keep["rationale"] += f"; AI review: {gate['rationale']}"
                             out.append(keep)
+                            approved_tokens.append(candidate["token"])
+                            if (keep["size_pct"] < float(candidate.get("size_pct", 0.0))
+                                    or keep["confidence"] < float(candidate.get("confidence", 0.0))):
+                                reduced.append({
+                                    "token": candidate["token"],
+                                    "from_size_pct": candidate.get("size_pct"),
+                                    "to_size_pct": keep["size_pct"],
+                                    "from_confidence": candidate.get("confidence"),
+                                    "to_confidence": keep["confidence"],
+                                    "rationale": gate.get("rationale", ""),
+                                })
                         else:
                             # Explicit size=0 is treated as a veto.
+                            vetoed.append({
+                                "token": candidate["token"],
+                                "action": candidate["action"],
+                                "rationale": gate.get("rationale", "size_pct=0"),
+                            })
                             continue
+                    elif candidate["action"] not in ("close", "sell", "trim"):
+                        vetoed.append({
+                            "token": candidate["token"],
+                            "action": candidate["action"],
+                            "rationale": "omitted_by_ai_review",
+                        })
+                source = base_debug.get("suppression_source")
+                if not out and vetoed:
+                    source = "GeminiReview:vetoed_all_buys"
+                elif vetoed and not [d for d in out if d.get("action") == "buy"]:
+                    source = "GeminiReview:vetoed_buys"
+                self.last_debug = {**base_debug, "ai_review": {
+                    "active": True,
+                    "provider": llm.provider(),
+                    "reviewable": reviewable,
+                    "model_decisions": model,
+                    "approved": approved_tokens,
+                    "reduced": reduced,
+                    "vetoed": vetoed,
+                }, "pre_ai_candidates": candidates, "post_ai_candidates": out,
+                   "suppression_source": source}
                 return out
             except Exception:
+                self.last_debug = {**base_debug, "ai_review": {
+                    "active": True,
+                    "provider": llm.provider(),
+                    "reviewable": reviewable,
+                    "error": "parse_or_validation_failed",
+                }}
                 pass  # logged by caller; fall through to deterministic decider
+        else:
+            self.last_debug = {**base_debug, "ai_review": {
+                "active": True,
+                "provider": llm.provider(),
+                "reviewable": reviewable,
+                "error": "no_model_text_fallback",
+            }}
         return candidates
 
 

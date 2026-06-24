@@ -290,6 +290,38 @@ def build_data(with_wallet=True, with_market=True):
                    for k, v in sorted(latest_boosts.items(),
                                       key=lambda kv: float(kv[1]), reverse=True)]
     } if latest_x402 else None
+    latest_trace = next((r for r in reversed(rows) if r.get("kind") == "decision_trace"), {})
+    strategy_debug = latest_trace.get("strategy_debug") or {}
+    trace_summary = {
+        "ts": latest_trace.get("ts"),
+        "final_action": latest_trace.get("final_action"),
+        "reason": latest_trace.get("reason"),
+        "suppression_source": strategy_debug.get("suppression_source"),
+        "targets": strategy_debug.get("targets") or [],
+        "eligible": strategy_debug.get("eligible") or [],
+        "rejects": strategy_debug.get("rejects") or {},
+        "anti_churn": strategy_debug.get("anti_churn") or {},
+        "ai_review": strategy_debug.get("ai_review") or {},
+        "top_ranked": (strategy_debug.get("top_ranked") or [])[:5],
+    } if latest_trace else {}
+    reasoning = [{"token": r.get("token"), "action": r.get("action"),
+                  "rationale": (r.get("rationale") or "")[:150]}
+                 for r in rows if r.get("kind") == "decision"][-3:][::-1]
+    if trace_summary and (not reasoning or trace_summary.get("final_action") == "hold"):
+        src = trace_summary.get("suppression_source") or trace_summary.get("reason") or "hold"
+        top = trace_summary.get("top_ranked") or []
+        top_txt = " · ".join(
+            f"{t.get('token')} {float(t.get('score') or 0):+.2f}"
+            for t in top[:3] if t.get("token")
+        )
+        ai = trace_summary.get("ai_review") or {}
+        vetoed = ai.get("vetoed") or []
+        extra = f"; AI veto: {', '.join(v.get('token','') for v in vetoed if v.get('token'))}" if vetoed else ""
+        reasoning.insert(0, {
+            "token": "",
+            "action": (trace_summary.get("final_action") or "hold").split(",")[0],
+            "rationale": (f"{src}" + (f"; radar: {top_txt}" if top_txt else "") + extra)[:180],
+        })
     return {
         "address": cfg["twak"]["agent_address"], "agent_id": cfg.get("bnb_sdk", {}).get("agent_id", ""),
         "live": live, "mode": mode, "generated_ts": int(time.time()),
@@ -302,9 +334,8 @@ def build_data(with_wallet=True, with_market=True):
         "track": track, "track_source": track_source,
         "since": curve[0][0] if (live and curve) else None,
         "positions": positions,
-        "reasoning": [{"token": r.get("token"), "action": r.get("action"),
-                       "rationale": (r.get("rationale") or "")[:150]}
-                      for r in rows if r.get("kind") == "decision"][-3:][::-1],
+        "reasoning": reasoning[:4],
+        "trace": trace_summary,
         "chart": chart,
         "risk": {"kill": kill * 100,
                  "stop": cfg["risk"]["per_position_stop_pct"] * 100, "policy": cfg["decision"]["policy"]},
