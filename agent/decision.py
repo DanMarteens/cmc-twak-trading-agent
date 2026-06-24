@@ -192,6 +192,17 @@ class RotationDecider:
         self.target_gross = float(d.get("target_gross_exposure_pct", 0.60))
         self.top5_gross = float(d.get("top5_gross_exposure_pct", 0.20))
         self.max_rank_mark_divergence = float(d.get("top5_max_mark_divergence_pct", 10.0))
+        entry_cfg = d.get("entry_filter", {}) or {}
+        self.entry_filter_enabled = bool(entry_cfg.get("enabled", True))
+        self.min_entry_quality_down = float(entry_cfg.get("min_quality_downtrend", 0.03))
+        self.min_entry_quality_up = float(entry_cfg.get("min_quality_uptrend", 0.02))
+        self.min_entry_r6_down = float(entry_cfg.get("min_return_6h_downtrend", 0.0))
+        self.max_entry_r6_down = float(entry_cfg.get("max_return_6h_downtrend", 0.08))
+        self.max_entry_cmc_1h_down = float(entry_cfg.get("max_cmc_pct_1h_downtrend", 0.03))
+        self.max_entry_cmc_24h_down = float(entry_cfg.get("max_cmc_pct_24h_downtrend", 0.18))
+        self.max_entry_cmc_7d_down = float(entry_cfg.get("max_cmc_pct_7d_downtrend", 0.45))
+        self.max_entry_distance_high_down = float(entry_cfg.get(
+            "max_distance_from_48h_high_downtrend", -0.005))
         ds = d.get("dynamic_sizing", {}) or {}
         self.dynamic_sizing = bool(ds.get("enabled", False))
         self.ds_low_score = float(ds.get("low_score", self.down_min_mom))
@@ -208,6 +219,8 @@ class RotationDecider:
             "floor_score_downtrend", max(0.0, self.down_min_mom - 0.04)))
         self.held_exit_floor_up = float(exit_cfg.get(
             "floor_score_uptrend", max(0.0, self.min_mom - 0.05)))
+        self.held_min_quality_down = float(exit_cfg.get("min_quality_downtrend", 0.0))
+        self.held_min_return_6h_down = float(exit_cfg.get("min_return_6h_downtrend", -0.015))
         self._now = 0.0                      # set by process_tick each tick (now_ts)
         self._exited_at: dict[str, float] = {}
 
@@ -314,16 +327,58 @@ class RotationDecider:
         def held_floor() -> float:
             return self.held_exit_floor_down if regime is Regime.TREND_DOWN else self.held_exit_floor_up
 
+        def fresh_entry(s) -> bool:
+            if not self.entry_filter_enabled:
+                return True
+            d = snapshot.get(s.token, {})
+            q = quality.get(s.token, -1.0)
+            if regime is Regime.TREND_DOWN:
+                r6 = float(d.get("return_6h", 0.0) or 0.0)
+                c1 = float(d.get("cmc_pct_1h", 0.0) or 0.0)
+                c24 = float(d.get("cmc_pct_24h", 0.0) or 0.0)
+                c7 = float(d.get("cmc_pct_7d", 0.0) or 0.0)
+                dist_high = float(d.get("distance_from_48h_high", -1.0) or -1.0)
+                if q < self.min_entry_quality_down:
+                    return False
+                if r6 < self.min_entry_r6_down or r6 > self.max_entry_r6_down:
+                    return False
+                if c1 > self.max_entry_cmc_1h_down:
+                    return False
+                if c24 > self.max_entry_cmc_24h_down:
+                    return False
+                if c7 > self.max_entry_cmc_7d_down:
+                    return False
+                if dist_high > self.max_entry_distance_high_down and r6 > 0:
+                    return False
+            else:
+                if q < self.min_entry_quality_up:
+                    return False
+            return True
+
+        def held_healthy(s) -> bool:
+            if not self.held_exit_enabled:
+                return True
+            if s.score < held_floor():
+                return False
+            if regime is Regime.TREND_DOWN:
+                d = snapshot.get(s.token, {})
+                if quality.get(s.token, 0.0) < self.held_min_quality_down:
+                    return False
+                if float(d.get("return_6h", 0.0) or 0.0) < self.held_min_return_6h_down:
+                    return False
+            return True
+
         def eligible_target(s, threshold):
             if s.token in held:
                 # Held-token health rule: do not keep a decayed position just
                 # because no new token is compelling.  This is strategy, not a
                 # manual call: score below the configured floor exits to cash.
-                return (not self.held_exit_enabled) or s.score >= held_floor()
+                return held_healthy(s)
             # New entries/rotate-ins require durable execution validation before
             # they can become targets.  High CMC momentum alone cannot bypass it.
             return (s.token in validated and s.score > threshold
-                    and confirmed(s, threshold))
+                    and confirmed(s, threshold)
+                    and fresh_entry(s))
 
         if regime is Regime.TREND_DOWN:         # only the strongest counter-trend names
             eligible = [s.token for s in ranked if eligible_target(s, self.down_min_mom)]

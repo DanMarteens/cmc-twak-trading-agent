@@ -195,3 +195,41 @@ def test_held_token_decays_below_floor_to_cash(cfg):
     signals = {"SIREN": _sig("SIREN", 0.20, Regime.TREND_DOWN)}
     out = d.decide({}, signals, _portfolio({"SIREN": 100.0}), {})
     assert any(x["token"] == "SIREN" and x["action"] == "close" for x in out)
+
+
+def test_downtrend_entry_rejects_late_hot_candle_even_with_good_signal(cfg):
+    cfg = {**cfg, "decision": {**cfg["decision"],
+                               "entry_filter": {"enabled": True,
+                                                "min_quality_downtrend": -1.0,
+                                                "max_cmc_pct_1h_downtrend": 0.03,
+                                                "max_cmc_pct_24h_downtrend": 0.18,
+                                                "max_cmc_pct_7d_downtrend": 0.45,
+                                                "min_return_6h_downtrend": 0.0,
+                                                "max_return_6h_downtrend": 0.08}}}
+    d = RotationDecider(cfg)
+    signals = {"LAB": _sig("LAB", 0.42, Regime.TREND_DOWN)}
+    snap = _snap("LAB")
+    snap["LAB"].update({
+        "return_6h": 0.025,
+        "return_24h": 0.078,
+        "cmc_pct_1h": 0.039,   # looks like a late candle; do not chase
+        "cmc_pct_24h": 0.067,
+        "cmc_pct_7d": 0.30,
+        "distance_from_48h_high": -0.02,
+    })
+    out = d.decide(snap, signals, _portfolio(), {"signal_streaks": {"LAB": 2}})
+    assert not any(x["token"] == "LAB" and x["action"] == "buy" for x in out)
+
+
+def test_held_token_exits_when_short_momentum_breaks_in_downtrend(cfg):
+    cfg = {**cfg, "decision": {**cfg["decision"],
+                               "held_exit": {"enabled": True,
+                                             "floor_score_downtrend": 0.28,
+                                             "min_quality_downtrend": -1.0,
+                                             "min_return_6h_downtrend": -0.015}}}
+    d = RotationDecider(cfg)
+    signals = {"SIREN": _sig("SIREN", 0.35, Regime.TREND_DOWN)}
+    snap = _snap("SIREN")
+    snap["SIREN"].update({"return_6h": -0.04, "return_24h": 0.0})
+    out = d.decide(snap, signals, _portfolio({"SIREN": 100.0}), {})
+    assert any(x["token"] == "SIREN" and x["action"] == "close" for x in out)
