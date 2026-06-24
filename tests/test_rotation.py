@@ -21,6 +21,14 @@ def _portfolio_with_marks(positions=None, values=None, avg_prices=None):
     return p
 
 
+def _portfolio_with_timing(positions=None, values=None, avg_prices=None,
+                           opened_ts=None, rotation_exited_at=None):
+    p = _portfolio_with_marks(positions, values, avg_prices)
+    p["position_opened_ts"] = opened_ts or {}
+    p["rotation_exited_at"] = rotation_exited_at or {}
+    return p
+
+
 def _snap(*tokens):
     return {
         t: {
@@ -559,3 +567,55 @@ def test_held_token_micro_profit_take_trims_winner(cfg):
     trim = next(x for x in out if x["token"] == "SAHARA" and x["action"] == "trim")
     assert trim["size_usd"] == pytest.approx(4.59)
     assert "micro profit take" in trim["rationale"]
+
+
+def test_fresh_losing_recovery_position_requires_bigger_rotation_edge(cfg):
+    cfg = {**cfg, "decision": {**cfg["decision"],
+                               "rotation_downtrend_topk": 1,
+                               "rotation_downtrend_min_momentum": 0.28,
+                               "rotation_score_hurdle": 0.18,
+                               "held_exit": {"enabled": True,
+                                             "floor_score_downtrend": 0.20,
+                                             "min_quality_downtrend": -1.0,
+                                             "min_return_6h_downtrend": -0.20,
+                                             "fresh_loss_rotation_min_hold_seconds_downtrend": 2700,
+                                             "fresh_loss_rotation_hurdle_downtrend": 1.0,
+                                             "fresh_loss_rotation_max_pnl_pct": 0.003},
+                               "dynamic_sizing": {"enabled": False}}}
+    d = RotationDecider(cfg)
+    d._now = 10_000
+    signals = {"ETH": _sig("ETH", 0.55, Regime.TREND_DOWN),
+               "SAHARA": _sig("SAHARA", 0.30, Regime.TREND_DOWN)}
+    snap = _snap("ETH", "SAHARA")
+    snap["ETH"].update({"return_6h": 0.03, "return_24h": 0.05})
+    snap["SAHARA"].update({"return_6h": 0.01, "return_24h": 0.03})
+    portfolio = _portfolio_with_timing(
+        {"SAHARA": 100.0},
+        values={"SAHARA": 9.95},
+        avg_prices={"SAHARA": 0.10},
+        opened_ts={"SAHARA": 10_000 - 600},
+    )
+    out = d.decide(snap, signals, portfolio, {"signal_streaks": {"ETH": 3, "SAHARA": 3}})
+    assert not any(x["token"] == "SAHARA" and x["action"] == "close" for x in out)
+    assert not any(x["token"] == "ETH" and x["action"] == "buy" for x in out)
+
+
+def test_rotation_reentry_cooldown_survives_restart_via_portfolio_state(cfg):
+    cfg = {**cfg, "decision": {**cfg["decision"],
+                               "rotation_downtrend_topk": 1,
+                               "rotation_downtrend_min_momentum": 0.28,
+                               "rotation_reentry_cooldown_hours": 4,
+                               "entry_filter": {**cfg["decision"].get("entry_filter", {}),
+                                                "min_quality_downtrend": -1.0},
+                               "dynamic_sizing": {"enabled": False}}}
+    d = RotationDecider(cfg)
+    d._now = 10_000
+    signals = {"SAHARA": _sig("SAHARA", 0.60, Regime.TREND_DOWN)}
+    snap = _snap("SAHARA")
+    snap["SAHARA"].update({"return_6h": 0.02, "return_24h": 0.05})
+    portfolio = _portfolio_with_timing(
+        {},
+        rotation_exited_at={"SAHARA": 10_000 - 600},
+    )
+    out = d.decide(snap, signals, portfolio, {"signal_streaks": {"SAHARA": 3}})
+    assert not any(x["token"] == "SAHARA" and x["action"] == "buy" for x in out)

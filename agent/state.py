@@ -80,6 +80,7 @@ class PortfolioState:
     execution_failures: dict[str, int] = field(default_factory=dict)
     execution_retry_after: dict[str, float] = field(default_factory=dict)
     signal_streaks: dict[str, int] = field(default_factory=dict)
+    rotation_exited_at: dict[str, float] = field(default_factory=dict)
 
     # ----- equity / drawdown -------------------------------------------------
     def mark_equity(self, mark_prices: dict[str, float], iso_ts: str) -> float:

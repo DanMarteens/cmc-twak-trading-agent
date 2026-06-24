@@ -267,6 +267,12 @@ class RotationDecider:
         self.held_min_hold_sec_down = float(exit_cfg.get("min_hold_seconds_downtrend", 0.0))
         self.held_stale_loss_pct = float(exit_cfg.get("stale_loss_pct", -0.006))
         self.held_stale_loss_min_r6 = float(exit_cfg.get("stale_loss_min_return_6h", -0.005))
+        self.fresh_loss_rotation_min_hold_sec_down = float(exit_cfg.get(
+            "fresh_loss_rotation_min_hold_seconds_downtrend", self.held_min_hold_sec_down))
+        self.fresh_loss_rotation_hurdle_down = float(exit_cfg.get(
+            "fresh_loss_rotation_hurdle_downtrend", max(self.rotation_hurdle, 0.30)))
+        self.fresh_loss_rotation_max_pnl = float(exit_cfg.get(
+            "fresh_loss_rotation_max_pnl_pct", 0.0))
         self.micro_profit_take_pct = float(exit_cfg.get("micro_profit_take_pct", 0.015))
         self.micro_profit_sell_fraction = float(exit_cfg.get("micro_profit_sell_fraction", 0.45))
         self.min_micro_profit_sell_usd = float(exit_cfg.get("min_micro_profit_sell_usd", 1.0))
@@ -493,6 +499,29 @@ class RotationDecider:
             return 0.0
         return value / (qty * avg) - 1.0
 
+    def _held_age_seconds(self, token: str, portfolio: dict) -> float:
+        opened_ts = float(portfolio.get("position_opened_ts", {}).get(token, 0.0) or 0.0)
+        return self._now - opened_ts if opened_ts > 0 and self._now > 0 else float("inf")
+
+    def _rotation_hurdle_for_held(self, token: str, regime: Regime, portfolio: dict) -> float:
+        """Use a bigger challenger edge before churning a fresh loser.
+
+        Recovery/scout entries often sit a few bps under water for one or two
+        5-minute ticks because of route friction.  Rotating them immediately
+        converts noise into realized spread loss, then the strategy can re-enter
+        the same theme higher.  Hard stops and explicit health exits still run
+        elsewhere; this only raises the opportunity-cost hurdle for discretionary
+        rotation.
+        """
+        if regime is not Regime.TREND_DOWN:
+            return self.rotation_hurdle
+        age = self._held_age_seconds(token, portfolio)
+        pnl = self._held_pnl(token, portfolio)
+        if (age < self.fresh_loss_rotation_min_hold_sec_down
+                and pnl <= self.fresh_loss_rotation_max_pnl):
+            return max(self.rotation_hurdle, self.fresh_loss_rotation_hurdle_down)
+        return self.rotation_hurdle
+
     def _held_exit_reason(self, signal: TokenSignal, regime: Regime, snapshot: dict,
                           quality: dict[str, float], portfolio: dict) -> str | None:
         if not self.held_exit_enabled:
@@ -506,8 +535,7 @@ class RotationDecider:
             q = quality.get(token, 0.0)
             r6 = float(d.get("return_6h", 0.0) or 0.0)
             pnl = self._held_pnl(token, portfolio)
-            opened_ts = float(portfolio.get("position_opened_ts", {}).get(token, 0.0) or 0.0)
-            age_sec = self._now - opened_ts if opened_ts > 0 and self._now > 0 else float("inf")
+            age_sec = self._held_age_seconds(token, portfolio)
             if q < self.held_min_quality_down:
                 return f"health exit: quality {q:.3f} < {self.held_min_quality_down:.3f}"
             if r6 < self.held_min_return_6h_down and age_sec >= self.held_min_hold_sec_down:
@@ -585,7 +613,8 @@ class RotationDecider:
                 targets.append(token)
                 continue
             weakest = min(targets, key=lambda t: quality[t])
-            if quality[weakest] - quality[token] < self.rotation_hurdle:
+            hurdle = self._rotation_hurdle_for_held(token, regime, portfolio)
+            if quality[weakest] - quality[token] < hurdle:
                 targets[targets.index(weakest)] = token
 
         decisions = []
@@ -628,7 +657,12 @@ class RotationDecider:
         for s in ranked:                       # enter/keep targets
             if s.token in targets and s.token not in held:
                 # hysteresis: skip names we rotated out of within the cooldown (anti-churn)
-                if self._now - self._exited_at.get(s.token, -1e18) < self.reentry_cooldown_sec:
+                persisted_exited_at = portfolio.get("rotation_exited_at", {}) or {}
+                last_exit = max(
+                    float(self._exited_at.get(s.token, -1e18) or -1e18),
+                    float(persisted_exited_at.get(s.token, -1e18) or -1e18),
+                )
+                if self._now - last_exit < self.reentry_cooldown_sec:
                     continue
                 needed = max(0.0, target_value - portfolio.get("position_values", {}).get(s.token, 0.0))
                 size_pct = needed / cash if cash > 0 else 0.0

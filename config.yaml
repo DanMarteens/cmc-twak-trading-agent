@@ -179,9 +179,12 @@ decision:
     floor_score_uptrend: 0.20
     min_quality_downtrend: 0.0
     min_return_6h_downtrend: -0.015
-    min_hold_seconds_downtrend: 900       # do not kill a fresh recovery scout on one noisy 5m tick
+    min_hold_seconds_downtrend: 2700      # do not kill a fresh recovery scout on one noisy 5m tick
     stale_loss_pct: -0.006
     stale_loss_min_return_6h: -0.005
+    fresh_loss_rotation_min_hold_seconds_downtrend: 2700
+    fresh_loss_rotation_hurdle_downtrend: 1.0
+    fresh_loss_rotation_max_pnl_pct: 0.003
     micro_profit_take_pct: 0.015
     micro_profit_sell_fraction: 0.45
     min_micro_profit_sell_usd: 1.0

@@ -631,6 +631,7 @@ def process_tick(cfg, state, snapshot, prices, decider, executor, log,
         "positions": {t: p.qty for t, p in state.positions.items()},
         "avg_prices": {t: p.avg_price for t, p in state.positions.items()},
         "position_opened_ts": {t: p.opened_ts for t, p in state.positions.items()},
+        "rotation_exited_at": dict(state.rotation_exited_at),
         "position_values": {t: p.qty * prices.get(t, p.avg_price)
                             for t, p in state.positions.items()},
     }
@@ -741,6 +742,7 @@ def process_tick(cfg, state, snapshot, prices, decider, executor, log,
                              execution_size, prices.get(token, 0.0),
                              log, verdict.reason, now=now_ts)
         if done and d["action"] == "close" and token in approved_rotation_closes:
+            state.rotation_exited_at[token] = now_ts
             filled_rotation_closes.add(token)
 
     log.write(_decision_trace(cfg, tick_id, snapshot, signals, portfolio, risk_limits,
