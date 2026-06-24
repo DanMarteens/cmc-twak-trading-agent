@@ -49,9 +49,43 @@ def test_llm_review_can_only_reduce_buy_size(monkeypatch, cfg):
     eth = next(x for x in out if x["token"] == "ETH")
     cake = next(x for x in out if x["token"] == "CAKE")
     assert eth["size_pct"] == 0.25
-    assert eth["confidence"] == 0.6
+    assert eth["confidence"] == 0.8
     assert cake["size_pct"] == 0.2
     assert cake["confidence"] == 0.7
+
+
+def test_llm_cash_preservation_veto_can_be_overridden_for_high_conviction(monkeypatch, cfg):
+    cfg = {**cfg, "llm": {**cfg["llm"], "second_gate": True,
+                          "cash_veto_override_enabled": True,
+                          "cash_veto_override_size_pct": 0.4}}
+
+    class RecoveryBase:
+        last_debug = {
+            "top_ranked": [{
+                "token": "LAB",
+                "score": 0.41,
+                "cmc_score": 0.88,
+                "x402_token_score": 0.28,
+                "round_trip_loss_pct": 1.9,
+                "token_risk_score": 10,
+                "return_6h": 0.01,
+            }]
+        }
+
+        def decide(self, snapshot, signals, portfolio, risk_limits):
+            return [{"token": "LAB", "action": "buy", "size_pct": 0.55,
+                     "confidence": 0.75, "rationale": "deterministic"}]
+
+    monkeypatch.setattr(decision.llm, "complete", lambda *a, **k: (
+        '{"decisions":[{"token":"LAB","action":"hold","size_pct":0,'
+        '"confidence":0,"rationale":"trend_down drawdown preserve cash"}]}'
+    ))
+    out = LLMDecider(cfg, fallback=RecoveryBase()).decide(
+        {}, {}, {"positions": {}}, {"leaderboard_rank": 47,
+                                    "leaderboard_drawdown_pct": 17.1})
+    assert out == [{"token": "LAB", "action": "buy", "size_pct": 0.4,
+                    "confidence": 0.75,
+                    "rationale": "deterministic; AI cash-veto overridden by high-conviction recovery guardrail"}]
 
 
 def test_deny_buy_lifts_only_after_executable_validation(cfg):

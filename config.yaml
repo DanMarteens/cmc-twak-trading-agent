@@ -53,13 +53,11 @@ risk:
   min_trades_per_day: 1
   min_trades_per_week: 7
   force_daily_trade: false      # disabled: never trade just to satisfy daily activity
-  max_trades_per_day: 12        # NEW ENTRIES only; enough for rotations without churn
-  min_seconds_between_trades: 900   # keep 15-minute entry pacing even with 1-minute ticks;
-                                    # other anti-churn gates still apply
-                                    # budget isn't burned in the first few hours. Closes are
-                                    # EXEMPT (risk_gate lets exits through), so this only paces
-                                    # new entries; rotation still exits freely. (Backtest forces
-                                    # this to 0 — coarse bars can't represent intra-day pacing.)
+  max_trades_per_day: 24        # NEW ENTRIES only; enough for recovery rotations without churn
+  min_seconds_between_trades: 300   # align entry pacing with the 5-minute strategy tick;
+                                    # other anti-churn gates still apply. Closes are EXEMPT
+                                    # (risk_gate lets exits through), so this only paces new
+                                    # entries; rotation still exits freely.
 
   # "Keep capital deployed": any hour starting with a sub-$1 portfolio scores 0%.
   # Never let total portfolio value approach $1; keep a minimum in-scope holding.
@@ -123,7 +121,7 @@ decision:
   strategy_label: Comeback v2
   rotation_top_k: 1         # one best executable candidate; avoid five mediocre wounds
   rotation_min_momentum: 0.30
-  rotation_downtrend_topk: 1
+  rotation_downtrend_topk: 2
                                    # name (NOT 100% cash: a cash week scores ~0% in a rank-by-
                                    # return contest). Backtest: this BEAT pure-cash in the bear
                                    # year (-9.7% vs -12.6%). Stops + daily pause + kill cap risk.
@@ -177,8 +175,10 @@ decision:
     # execution validation and the higher rotation threshold.
     floor_score_downtrend: 0.28
     floor_score_uptrend: 0.20
+    floor_score_buffer_downtrend: 0.02
+    floor_score_buffer_uptrend: 0.01
     min_quality_downtrend: 0.0
-    min_return_6h_downtrend: -0.015
+    min_return_6h_downtrend: -0.030
     min_hold_seconds_downtrend: 2700      # do not kill a fresh recovery scout on one noisy 5m tick
     stale_loss_pct: -0.006
     stale_loss_min_return_6h: -0.005
@@ -217,7 +217,7 @@ decision:
     medium_risk_threshold: 30
     medium_risk_gross_cap: 0.15          # SAHARA-like: route valid, but CMC/news/risk not clean
     weak_cmc_threshold: 0.40
-    weak_cmc_gross_cap: 0.20             # LAB-like recovery scout when CMC is not high-conviction
+    weak_cmc_gross_cap: 0.30             # recovery scout: validated x402 can still work before CMC catches up
     stress_drawdown_pct: 0.18
     stress_exposure_pct: 0.25
   top5_gross_exposure_pct: 0.05          # defend rank aggressively once inside top five
@@ -261,6 +261,15 @@ llm:
   # ANTHROPIC_MODEL env. No LLM requirement from the hackathon — this is optional polish.
   max_tokens: 1500
   second_gate: true             # AI review/veto only: may reduce/veto buys, never invent trades or block exits
+  cash_veto_override_enabled: true
+  cash_veto_override_size_pct: 0.40
+  cash_veto_override_min_score: 0.35
+  cash_veto_override_min_cmc: 0.75
+  cash_veto_override_min_x402: 0.25
+  cash_veto_override_min_return_6h: -0.005
+  cash_veto_override_max_round_trip_loss_pct: 2.5
+  cash_veto_override_max_token_risk_score: 30
+  cash_veto_override_max_leaderboard_dd_pct: 24.0
 
 # --- Integrations ---------------------------------------------------------
 cmc:

@@ -28,8 +28,10 @@ strategy already produced candidate actions. Your only job is risk review.
 RULES:
 1. Review ONLY the provided deterministic candidate decisions.
 2. NEVER introduce a new token or action.
-3. NEVER increase size_pct or confidence. You may only approve unchanged,
-   reduce size_pct/confidence, or veto by omitting the candidate / returning hold.
+3. NEVER increase size_pct. You may approve unchanged, reduce size_pct, or veto
+   by omitting the candidate / returning hold. Do NOT lower confidence on an
+   approved buy: confidence is the deterministic execution gate, not an opinion
+   score.
 4. NEVER veto de-risking actions: close, sell, trim.
 5. For buys, check late chase, falling knife, weak route/liquidity, holder/news risk,
    and whether 1h/24h/7d momentum is already overextended.
@@ -520,6 +522,10 @@ class RotationDecider:
             "floor_score_downtrend", max(0.0, self.down_min_mom - 0.04)))
         self.held_exit_floor_up = float(exit_cfg.get(
             "floor_score_uptrend", max(0.0, self.min_mom - 0.05)))
+        self.held_exit_floor_buffer_down = float(exit_cfg.get(
+            "floor_score_buffer_downtrend", 0.0))
+        self.held_exit_floor_buffer_up = float(exit_cfg.get(
+            "floor_score_buffer_uptrend", 0.0))
         self.held_min_quality_down = float(exit_cfg.get("min_quality_downtrend", 0.0))
         self.held_min_return_6h_down = float(exit_cfg.get("min_return_6h_downtrend", -0.015))
         self.held_min_hold_sec_down = float(exit_cfg.get("min_hold_seconds_downtrend", 0.0))
@@ -849,8 +855,13 @@ class RotationDecider:
             return None
         token = signal.token
         floor = self._held_floor(regime)
-        if signal.score < floor:
-            return f"health exit: score {signal.score:.3f} < floor {floor:.3f}"
+        floor_buffer = (self.held_exit_floor_buffer_down
+                        if regime is Regime.TREND_DOWN
+                        else self.held_exit_floor_buffer_up)
+        effective_floor = floor - max(0.0, floor_buffer)
+        if signal.score < effective_floor:
+            return (f"health exit: score {signal.score:.3f} < "
+                    f"floor {effective_floor:.3f} (base {floor:.3f})")
         if regime is Regime.TREND_DOWN:
             d = snapshot.get(token, {})
             q = quality.get(token, 0.0)
@@ -961,6 +972,70 @@ class LLMDecider:
         self.fallback = fallback or RuleBasedDecider(cfg)
         self.last_debug: dict = {}
 
+    def _cash_veto_override(self, candidate: dict, base_debug: dict,
+                            risk_limits: dict, vetoed: list[dict]) -> dict | None:
+        """Allow comeback mode to override generic AI cash-preservation vetoes.
+
+        The model is useful for hard vetoes (route/liquidity/scam/news risk), but
+        it can become too conservative in a rank-by-return tournament and reject
+        every buy simply because the market is in trend_down.  If the
+        deterministic stack found a validated, low-risk, high-conviction setup,
+        keep a reduced recovery-size entry instead of sitting fully in cash.
+        """
+        llm_cfg = self.cfg.get("llm", {}) or {}
+        if not bool(llm_cfg.get("cash_veto_override_enabled", True)):
+            return None
+        if candidate.get("action") != "buy":
+            return None
+        veto_text = " ".join(str(v.get("rationale", "")) for v in vetoed).lower()
+        hard_risk_words = (
+            "no route", "route", "liquidity", "honeypot", "scam", "exploit",
+            "hack", "holder", "whale", "concentration", "news risk", "delist",
+        )
+        if any(word in veto_text for word in hard_risk_words):
+            return None
+        rank = risk_limits.get("leaderboard_rank")
+        if rank is not None and int(rank) <= int(llm_cfg.get("cash_veto_override_rank_floor", 5)):
+            return None
+        lb_dd = risk_limits.get("leaderboard_drawdown_pct")
+        max_dd = float(llm_cfg.get("cash_veto_override_max_leaderboard_dd_pct", 24.0))
+        if lb_dd is not None and float(lb_dd) >= max_dd:
+            return None
+
+        token = candidate.get("token")
+        details = {}
+        for row in (base_debug.get("top_ranked") or []):
+            if row.get("token") == token:
+                details = row
+                break
+        if not details:
+            return None
+        score = float(details.get("score") or 0.0)
+        cmc = float(details.get("cmc_score") or 0.0)
+        x402 = float(details.get("x402_token_score") or 0.0)
+        round_trip = float(details.get("round_trip_loss_pct") or 999.0)
+        token_risk = float(details.get("token_risk_score") or 999.0)
+        r6 = float(details.get("return_6h") or 0.0)
+        if score < float(llm_cfg.get("cash_veto_override_min_score", 0.35)):
+            return None
+        if cmc < float(llm_cfg.get("cash_veto_override_min_cmc", 0.75)):
+            return None
+        if x402 < float(llm_cfg.get("cash_veto_override_min_x402", 0.25)):
+            return None
+        if round_trip > float(llm_cfg.get("cash_veto_override_max_round_trip_loss_pct", 2.5)):
+            return None
+        if token_risk > float(llm_cfg.get("cash_veto_override_max_token_risk_score", 30.0)):
+            return None
+        if r6 < float(llm_cfg.get("cash_veto_override_min_return_6h", -0.005)):
+            return None
+
+        keep = dict(candidate)
+        max_size = float(llm_cfg.get("cash_veto_override_size_pct", 0.40))
+        keep["size_pct"] = min(float(candidate.get("size_pct", 0.0)), max_size)
+        keep["confidence"] = candidate["confidence"]
+        keep["rationale"] += "; AI cash-veto overridden by high-conviction recovery guardrail"
+        return keep
+
     def decide(self, snapshot, signals, portfolio, risk_limits):
         setattr(self.fallback, "_now", getattr(self, "_now", 0.0))
         candidates = self.fallback.decide(snapshot, signals, portfolio, risk_limits)
@@ -989,9 +1064,9 @@ class LLMDecider:
             f"Reviewable deterministic candidates, max 5:\n{json.dumps(reviewable)}\n\n"
             f"De-risking candidates that MUST pass through unchanged:\n{json.dumps(exits)}\n\n"
             "Act only as a veto/review gate. Approve a buy by returning the exact same "
-            "token and action with size_pct <= candidate size_pct and confidence <= candidate "
-            "confidence. Reduce size if risk is elevated. Veto by omitting the candidate or "
-            "returning hold. Never introduce a new token/action. JSON only."
+            "token and action with size_pct <= candidate size_pct. Do not reduce confidence "
+            "for an approved buy; use size_pct reduction or veto instead. Veto by omitting "
+            "the candidate or returning hold. Never introduce a new token/action. JSON only."
         )
         text = llm.complete(user, system=SYSTEM_PROMPT,
                             max_tokens=self.cfg["llm"]["max_tokens"])
@@ -1014,13 +1089,16 @@ class LLMDecider:
                         keep = dict(candidate)
                         keep["size_pct"] = min(float(candidate.get("size_pct", 0.0)),
                                                float(gate.get("size_pct", 0.0)))
-                        keep["confidence"] = min(candidate["confidence"], gate["confidence"])
+                        # Gemini/Claude is a veto + size-review layer.  Do not let
+                        # the model silently turn an approved buy into a
+                        # risk_gate low_confidence block; if it dislikes the
+                        # trade it must veto or reduce size.
+                        keep["confidence"] = candidate["confidence"]
                         if keep["size_pct"] > 0:
                             keep["rationale"] += f"; AI review: {gate['rationale']}"
                             out.append(keep)
                             approved_tokens.append(candidate["token"])
-                            if (keep["size_pct"] < float(candidate.get("size_pct", 0.0))
-                                    or keep["confidence"] < float(candidate.get("confidence", 0.0))):
+                            if keep["size_pct"] < float(candidate.get("size_pct", 0.0)):
                                 reduced.append({
                                     "token": candidate["token"],
                                     "from_size_pct": candidate.get("size_pct"),
@@ -1044,6 +1122,23 @@ class LLMDecider:
                             "rationale": "omitted_by_ai_review",
                         })
                 source = base_debug.get("suppression_source")
+                override = None
+                if not any(d.get("action") == "buy" for d in out) and vetoed:
+                    for candidate in reviewable:
+                        override = self._cash_veto_override(candidate, base_debug,
+                                                            risk_limits, vetoed)
+                        if override:
+                            out.append(override)
+                            reduced.append({
+                                "token": override["token"],
+                                "from_size_pct": candidate.get("size_pct"),
+                                "to_size_pct": override["size_pct"],
+                                "from_confidence": candidate.get("confidence"),
+                                "to_confidence": override["confidence"],
+                                "rationale": "cash_veto_override",
+                            })
+                            source = "GeminiReview:cash_veto_overridden"
+                            break
                 if not out and vetoed:
                     source = "GeminiReview:vetoed_all_buys"
                 elif vetoed and not [d for d in out if d.get("action") == "buy"]:
