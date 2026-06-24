@@ -17,7 +17,7 @@ quote_asset: USDT        # cash leg
 eligible_tokens_file: config/eligible_tokens.txt   # populate from the 149-list
 
 # --- Loop -----------------------------------------------------------------
-poll_interval_minutes: 1
+poll_interval_minutes: 5
 rpc:
   max_retries: 5
   backoff_base_seconds: 2     # exponential: 2,4,8,16,32
@@ -288,13 +288,13 @@ twak:
 x402:
   signal_url: ""              # set to the https x402 endpoint to enable in-loop payments
   max_payment_atomic: 1000    # 0.001 USDC cap per request (6dp)
-  every_n_ticks: 60           # 1-minute loop: keep paid premium signal roughly hourly
+  every_n_ticks: 12           # 5-minute loop: keep paid premium signal roughly hourly
 
 bnb_sdk:
   agent_name: cmc-twak-trading-agent
   enabled: true
   agent_id: "138200"            # ERC-8004 identity minted on BSC mainnet (special prize)
-  attest_every_n_ticks: 1440    # 1-minute loop: write track record on-chain ~daily
+  attest_every_n_ticks: 288     # 5-minute loop: write track record on-chain ~daily
   # tx: https://bscscan.com/tx/0x64ffc8dbe7b38428bdc456839456fe12ab8a8702581ee2d679c5b21727eb45ca
 
 # --- Persistence ----------------------------------------------------------
