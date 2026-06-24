@@ -737,9 +737,15 @@ def main(argv=None):
 
     while True:
         try:
+            tick_started = time.monotonic()
             tick()
             backoff = cfg["rpc"]["backoff_base_seconds"]   # reset on success
-            time.sleep(interval)
+            # Fixed-rate scheduler: a "1 minute" loop should not become
+            # tick_duration + 60s.  If a full-universe scan takes longer than
+            # the interval, start the next tick immediately after it finishes;
+            # never overlap ticks against the same portfolio state.
+            elapsed = time.monotonic() - tick_started
+            time.sleep(max(0.0, interval - elapsed))
         except KeyboardInterrupt:
             log.event("shutdown", reason="keyboard interrupt")
             return 0
