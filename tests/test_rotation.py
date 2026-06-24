@@ -14,6 +14,13 @@ def _portfolio(positions=None):
     return {"cash_usd": 1000, "total_equity_usd": 1000, "positions": positions or {}}
 
 
+def _portfolio_with_marks(positions=None, values=None, avg_prices=None):
+    p = _portfolio(positions)
+    p["position_values"] = values or {}
+    p["avg_prices"] = avg_prices or {}
+    return p
+
+
 def _snap(*tokens):
     return {
         t: {
@@ -221,6 +228,33 @@ def test_downtrend_entry_rejects_late_hot_candle_even_with_good_signal(cfg):
     assert not any(x["token"] == "LAB" and x["action"] == "buy" for x in out)
 
 
+def test_downtrend_entry_rejects_hot_move_without_volume_confirmation(cfg):
+    cfg = {**cfg, "decision": {**cfg["decision"],
+                               "entry_filter": {"enabled": True,
+                                                "min_quality_downtrend": -1.0,
+                                                "max_cmc_pct_1h_downtrend": 0.03,
+                                                "max_cmc_pct_24h_downtrend": 0.18,
+                                                "max_cmc_pct_7d_downtrend": 0.45,
+                                                "min_return_6h_downtrend": 0.0,
+                                                "max_return_6h_downtrend": 0.08,
+                                                "min_volume_change_24h_downtrend": -0.50,
+                                                "hot_volume_min_change_24h_downtrend": -0.10}}}
+    d = RotationDecider(cfg)
+    signals = {"LAB": _sig("LAB", 0.43, Regime.TREND_DOWN)}
+    snap = _snap("LAB")
+    snap["LAB"].update({
+        "return_6h": 0.035,
+        "return_24h": 0.06,
+        "cmc_pct_1h": 0.025,
+        "cmc_pct_24h": 0.15,
+        "cmc_pct_7d": 0.20,
+        "cmc_volume_change_24h": -0.25,
+        "distance_from_48h_high": -0.02,
+    })
+    out = d.decide(snap, signals, _portfolio(), {"signal_streaks": {"LAB": 2}})
+    assert not any(x["token"] == "LAB" and x["action"] == "buy" for x in out)
+
+
 def test_held_token_exits_when_short_momentum_breaks_in_downtrend(cfg):
     cfg = {**cfg, "decision": {**cfg["decision"],
                                "held_exit": {"enabled": True,
@@ -232,4 +266,30 @@ def test_held_token_exits_when_short_momentum_breaks_in_downtrend(cfg):
     snap = _snap("SIREN")
     snap["SIREN"].update({"return_6h": -0.04, "return_24h": 0.0})
     out = d.decide(snap, signals, _portfolio({"SIREN": 100.0}), {})
-    assert any(x["token"] == "SIREN" and x["action"] == "close" for x in out)
+    close = next(x for x in out if x["token"] == "SIREN" and x["action"] == "close")
+    assert "health exit" in close["rationale"]
+    assert "rotate out" not in close["rationale"]
+
+
+def test_held_token_micro_profit_take_trims_winner(cfg):
+    cfg = {**cfg, "decision": {**cfg["decision"],
+                               "held_exit": {"enabled": True,
+                                             "floor_score_downtrend": 0.20,
+                                             "micro_profit_take_pct": 0.015,
+                                             "micro_profit_sell_fraction": 0.45,
+                                             "min_micro_profit_sell_usd": 1.0},
+                               "rotation_downtrend_min_momentum": 0.28,
+                               "dynamic_sizing": {"enabled": False}}}
+    d = RotationDecider(cfg)
+    signals = {"SAHARA": _sig("SAHARA", 0.34, Regime.TREND_DOWN)}
+    snap = _snap("SAHARA")
+    snap["SAHARA"].update({"return_6h": 0.02, "return_24h": 0.03})
+    portfolio = _portfolio_with_marks(
+        {"SAHARA": 100.0},
+        values={"SAHARA": 10.20},
+        avg_prices={"SAHARA": 0.10},
+    )
+    out = d.decide(snap, signals, portfolio, {"signal_streaks": {"SAHARA": 2}})
+    trim = next(x for x in out if x["token"] == "SAHARA" and x["action"] == "trim")
+    assert trim["size_usd"] == pytest.approx(4.59)
+    assert "micro profit take" in trim["rationale"]

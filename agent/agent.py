@@ -560,6 +560,7 @@ def process_tick(cfg, state, snapshot, prices, decider, executor, log,
         "cash_usd": state.cash_usd,
         "total_equity_usd": equity,
         "positions": {t: p.qty for t, p in state.positions.items()},
+        "avg_prices": {t: p.avg_price for t, p in state.positions.items()},
         "position_values": {t: p.qty * prices.get(t, p.avg_price)
                             for t, p in state.positions.items()},
     }

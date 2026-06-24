@@ -148,6 +148,8 @@ decision:
     max_cmc_pct_24h_downtrend: 0.18
     max_cmc_pct_7d_downtrend: 0.45
     max_distance_from_48h_high_downtrend: -0.005
+    min_volume_change_24h_downtrend: -0.25
+    hot_volume_min_change_24h_downtrend: -0.10
   held_exit:
     enabled: true
     # Held-token health floor. A current position may stay below the new-entry
@@ -158,6 +160,11 @@ decision:
     floor_score_uptrend: 0.20
     min_quality_downtrend: 0.0
     min_return_6h_downtrend: -0.015
+    stale_loss_pct: -0.006
+    stale_loss_min_return_6h: -0.005
+    micro_profit_take_pct: 0.015
+    micro_profit_sell_fraction: 0.45
+    min_micro_profit_sell_usd: 1.0
   target_gross_exposure_pct: 0.55        # maximum catch-up mode exposure outside the top five
   dynamic_sizing:
     enabled: true

@@ -203,6 +203,10 @@ class RotationDecider:
         self.max_entry_cmc_7d_down = float(entry_cfg.get("max_cmc_pct_7d_downtrend", 0.45))
         self.max_entry_distance_high_down = float(entry_cfg.get(
             "max_distance_from_48h_high_downtrend", -0.005))
+        self.min_entry_volume_change_down = float(entry_cfg.get(
+            "min_volume_change_24h_downtrend", -0.25))
+        self.hot_volume_min_change_down = float(entry_cfg.get(
+            "hot_volume_min_change_24h_downtrend", -0.10))
         ds = d.get("dynamic_sizing", {}) or {}
         self.dynamic_sizing = bool(ds.get("enabled", False))
         self.ds_low_score = float(ds.get("low_score", self.down_min_mom))
@@ -221,6 +225,11 @@ class RotationDecider:
             "floor_score_uptrend", max(0.0, self.min_mom - 0.05)))
         self.held_min_quality_down = float(exit_cfg.get("min_quality_downtrend", 0.0))
         self.held_min_return_6h_down = float(exit_cfg.get("min_return_6h_downtrend", -0.015))
+        self.held_stale_loss_pct = float(exit_cfg.get("stale_loss_pct", -0.006))
+        self.held_stale_loss_min_r6 = float(exit_cfg.get("stale_loss_min_return_6h", -0.005))
+        self.micro_profit_take_pct = float(exit_cfg.get("micro_profit_take_pct", 0.015))
+        self.micro_profit_sell_fraction = float(exit_cfg.get("micro_profit_sell_fraction", 0.45))
+        self.min_micro_profit_sell_usd = float(exit_cfg.get("min_micro_profit_sell_usd", 1.0))
         self._now = 0.0                      # set by process_tick each tick (now_ts)
         self._exited_at: dict[str, float] = {}
 
@@ -287,6 +296,7 @@ class RotationDecider:
         for s in cand:
             d = snapshot.get(s.token, {})
             vol_adj = max(-1.0, min(1.0, float(d.get("vol_adjusted_return", 0.0)) / 3.0))
+            vol_chg = max(-1.0, min(1.0, float(d.get("cmc_volume_change_24h", 0.0) or 0.0) / 1.5))
             spread = max(0.0, float(d.get("round_trip_loss_pct", 0.0))) / 100.0
             risk = max(0.0, float(d.get("token_risk_score", 0.0))) / 100.0
             r24 = float(d.get("return_24h", 0.0))
@@ -307,7 +317,7 @@ class RotationDecider:
             ambiguous_penalty = 0.05 if d.get("cmc_ambiguous") else 0.0
             quality[s.token] = (0.35 * s.score + 0.20 * rel6[s.token]
                                 + 0.25 * rel24[s.token] + 0.15 * vol_adj
-                                + 0.18 * cmc
+                                + 0.18 * cmc + 0.08 * vol_chg
                                 - 0.75 * spread - 0.10 * risk - chase_penalty
                                 - liquidity_penalty - rank_penalty - holder_penalty
                                 - ambiguous_penalty)
@@ -327,9 +337,9 @@ class RotationDecider:
         def held_floor() -> float:
             return self.held_exit_floor_down if regime is Regime.TREND_DOWN else self.held_exit_floor_up
 
-        def fresh_entry(s) -> bool:
+        def entry_classification(s) -> tuple[bool, str]:
             if not self.entry_filter_enabled:
-                return True
+                return True, "entry_filter_disabled"
             d = snapshot.get(s.token, {})
             q = quality.get(s.token, -1.0)
             if regime is Regime.TREND_DOWN:
@@ -337,36 +347,66 @@ class RotationDecider:
                 c1 = float(d.get("cmc_pct_1h", 0.0) or 0.0)
                 c24 = float(d.get("cmc_pct_24h", 0.0) or 0.0)
                 c7 = float(d.get("cmc_pct_7d", 0.0) or 0.0)
+                vol_chg = float(d.get("cmc_volume_change_24h", 0.0) or 0.0)
                 dist_high = float(d.get("distance_from_48h_high", -1.0) or -1.0)
                 if q < self.min_entry_quality_down:
-                    return False
+                    return False, f"low_quality:{q:.3f}"
                 if r6 < self.min_entry_r6_down or r6 > self.max_entry_r6_down:
-                    return False
+                    return False, f"bad_6h:{r6:.3f}"
                 if c1 > self.max_entry_cmc_1h_down:
-                    return False
+                    return False, f"late_hot_1h:{c1:.3f}"
                 if c24 > self.max_entry_cmc_24h_down:
-                    return False
+                    return False, f"late_hot_24h:{c24:.3f}"
                 if c7 > self.max_entry_cmc_7d_down:
-                    return False
+                    return False, f"late_hot_7d:{c7:.3f}"
                 if dist_high > self.max_entry_distance_high_down and r6 > 0:
-                    return False
+                    return False, f"near_48h_high:{dist_high:.3f}"
+                if vol_chg < self.min_entry_volume_change_down:
+                    return False, f"weak_volume:{vol_chg:.3f}"
+                if (c1 > self.max_entry_cmc_1h_down * 0.70
+                        or c24 > self.max_entry_cmc_24h_down * 0.70) \
+                        and vol_chg < self.hot_volume_min_change_down:
+                    return False, f"hot_without_volume:{vol_chg:.3f}"
+                if r6 >= 0.02 and c24 <= self.max_entry_cmc_24h_down * 0.70:
+                    return True, "fresh_bounce"
+                return True, "continuation"
             else:
                 if q < self.min_entry_quality_up:
-                    return False
-            return True
+                    return False, f"low_quality:{q:.3f}"
+            return True, "trend_up_candidate"
+
+        def fresh_entry(s) -> bool:
+            return entry_classification(s)[0]
+
+        def held_pnl(token: str) -> float:
+            avg = float(portfolio.get("avg_prices", {}).get(token, 0.0) or 0.0)
+            value = float(portfolio.get("position_values", {}).get(token, 0.0) or 0.0)
+            qty = float(portfolio.get("positions", {}).get(token, 0.0) or 0.0)
+            if avg <= 0.0 or qty <= 0.0:
+                return 0.0
+            return value / (qty * avg) - 1.0
+
+        def held_exit_reason(s) -> str | None:
+            if not self.held_exit_enabled:
+                return None
+            token = s.token
+            if s.score < held_floor():
+                return f"health exit: score {s.score:.3f} < floor {held_floor():.3f}"
+            if regime is Regime.TREND_DOWN:
+                d = snapshot.get(token, {})
+                q = quality.get(token, 0.0)
+                r6 = float(d.get("return_6h", 0.0) or 0.0)
+                pnl = held_pnl(token)
+                if q < self.held_min_quality_down:
+                    return f"health exit: quality {q:.3f} < {self.held_min_quality_down:.3f}"
+                if r6 < self.held_min_return_6h_down:
+                    return f"health exit: 6h momentum {r6:.3f} < {self.held_min_return_6h_down:.3f}"
+                if pnl <= self.held_stale_loss_pct and r6 < self.held_stale_loss_min_r6:
+                    return f"health exit: stale loss pnl={pnl:.3f}, r6={r6:.3f}"
+            return None
 
         def held_healthy(s) -> bool:
-            if not self.held_exit_enabled:
-                return True
-            if s.score < held_floor():
-                return False
-            if regime is Regime.TREND_DOWN:
-                d = snapshot.get(s.token, {})
-                if quality.get(s.token, 0.0) < self.held_min_quality_down:
-                    return False
-                if float(d.get("return_6h", 0.0) or 0.0) < self.held_min_return_6h_down:
-                    return False
-            return True
+            return held_exit_reason(s) is None
 
         def eligible_target(s, threshold):
             if s.token in held:
@@ -407,7 +447,10 @@ class RotationDecider:
         for t in held:                         # exit names no longer targeted
             if t not in targets:
                 self._exited_at[t] = self._now   # arm the re-entry cooldown
-                decisions.append(_dec(t, "close", 0.0, 0.7, f"rotate out ({regime.value})"))
+                held_signal = signals.get(t)
+                reason = held_exit_reason(held_signal) if held_signal else None
+                decisions.append(_dec(t, "close", 0.0, 0.78 if reason else 0.7,
+                                      reason or f"rotate out ({regime.value})"))
         rank = risk_limits.get("leaderboard_rank")
         lb_ret = risk_limits.get("leaderboard_return_pct")
         exec_ret = float(risk_limits.get("executable_return_pct") or 0.0)
@@ -421,6 +464,15 @@ class RotationDecider:
         for token in targets:
             current = portfolio.get("position_values", {}).get(token, 0.0)
             excess = current - target_value
+            pnl = held_pnl(token)
+            if (token in held and pnl >= self.micro_profit_take_pct
+                    and current * self.micro_profit_sell_fraction >= self.min_micro_profit_sell_usd):
+                decisions.append({"token": token, "action": "trim", "size_pct": 0.0,
+                                  "size_usd": round(current * self.micro_profit_sell_fraction, 2),
+                                  "confidence": 1.0,
+                                  "rationale": f"micro profit take; pnl={pnl:.3f}, "
+                                               f"sell_fraction={self.micro_profit_sell_fraction:.2f}"})
+                continue
             if token in held and excess >= min_rebalance:
                 decisions.append({"token": token, "action": "trim", "size_pct": 0.0,
                                   "size_usd": round(excess, 2), "confidence": 1.0,
@@ -436,8 +488,9 @@ class RotationDecider:
                 if size_pct <= 0:
                     continue
                 conf = min(0.95, 0.55 + abs(s.score) / 2)
+                _, entry_kind = entry_classification(s)
                 decisions.append(_dec(s.token, "buy", size_pct, conf,
-                                      f"rotate in: quality={quality[s.token]:.3f}, "
+                                      f"rotate in: {entry_kind}, quality={quality[s.token]:.3f}, "
                                       f"signal={s.score} ({regime.value}), gross={gross:.2f}"))
         return decisions
 
