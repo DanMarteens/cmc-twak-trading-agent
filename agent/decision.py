@@ -43,7 +43,7 @@ OUTPUT — EXACTLY this JSON, no markdown:
 _VALID_ACTIONS = {"buy", "sell", "short", "hold", "close", "trim"}
 
 
-def executable_validated_token(cfg: dict, token: str) -> bool:
+def runtime_validated_token(cfg: dict, token: str, snapshot: dict | None = None) -> bool:
     """True when a token has passed the dynamic executable round-trip probe.
 
     `deny_buy` is intentionally not always permanent. Some names (notably ZETA)
@@ -52,7 +52,12 @@ def executable_validated_token(cfg: dict, token: str) -> bool:
     UniverseManager records a successful buy->sell validation with acceptable
     round-trip loss.
     """
-    meta = (cfg.get("universe_runtime") or {}).get(token) or {}
+    meta = dict((cfg.get("universe_runtime") or {}).get(token) or {})
+    if snapshot and isinstance(snapshot.get(token), dict):
+        # Snapshot values are current-tick data; universe_runtime is the durable
+        # validation cache.  Merge them so a tick can use the freshest probe
+        # without allowing missing snapshot fields to erase validation metadata.
+        meta.update({k: v for k, v in snapshot[token].items() if v is not None})
     if not meta:
         return False
     try:
@@ -68,6 +73,10 @@ def executable_validated_token(cfg: dict, token: str) -> bool:
         and str(meta.get("risk_level", "")).lower() != "high"
         and int(meta.get("history_bars", 0) or 0) >= int(cfg.get("universe", {}).get("min_history_bars", 0))
     )
+
+
+def executable_validated_token(cfg: dict, token: str) -> bool:
+    return runtime_validated_token(cfg, token)
 
 
 def tradeable_buy_tokens(cfg: dict) -> set[str]:
@@ -193,6 +202,12 @@ class RotationDecider:
         self.ds_high_gross = float(ds.get("high_exposure_pct", self.target_gross))
         self.ds_stress_dd = float(ds.get("stress_drawdown_pct", 0.18))
         self.ds_stress_gross = float(ds.get("stress_exposure_pct", min(self.target_gross, 0.25)))
+        exit_cfg = d.get("held_exit", {}) or {}
+        self.held_exit_enabled = bool(exit_cfg.get("enabled", True))
+        self.held_exit_floor_down = float(exit_cfg.get(
+            "floor_score_downtrend", max(0.0, self.down_min_mom - 0.04)))
+        self.held_exit_floor_up = float(exit_cfg.get(
+            "floor_score_uptrend", max(0.0, self.min_mom - 0.05)))
         self._now = 0.0                      # set by process_tick each tick (now_ts)
         self._exited_at: dict[str, float] = {}
 
@@ -229,12 +244,17 @@ class RotationDecider:
         return min(self.target_gross, max(0.0, gross))
 
     def decide(self, snapshot, signals: dict[str, TokenSignal], portfolio, risk_limits):
-        tradeable = tradeable_buy_tokens(self.cfg)
-        cand = [s for s in signals.values() if s.token in tradeable]
+        buyable = tradeable_buy_tokens(self.cfg)
+        held = {t for t, q in portfolio["positions"].items() if q > 0}
+        # Buy candidates must be in the execution-validated buy universe.  Held
+        # tokens are also considered so the strategy can make an explicit
+        # hold/trim/close decision even if a name later leaves deny_buy or the
+        # dynamic universe.
+        cand = [s for s in signals.values() if s.token in buyable or s.token in held]
         if not cand:
             return []
         regime = cand[0].regime
-        held = {t for t, q in portfolio["positions"].items() if q > 0 and t in tradeable}
+        held = {t for t in held if t in {s.token for s in cand}}
 
         if regime is Regime.CHOP:
             return []                          # hold current; stops still run upstream
@@ -283,19 +303,33 @@ class RotationDecider:
         immediate = float(confirmation.get("immediate_score", 0.40))
         required_ticks = int(confirmation.get("required_ticks", 2))
         streaks = risk_limits.get("signal_streaks", {})
+        validated = {s.token for s in cand
+                     if runtime_validated_token(self.cfg, s.token, snapshot)}
 
         def confirmed(s, threshold):
             return (s.token in held or
                     (s.score >= immediate) or
                     (s.score > threshold and int(streaks.get(s.token, 0)) >= required_ticks))
 
+        def held_floor() -> float:
+            return self.held_exit_floor_down if regime is Regime.TREND_DOWN else self.held_exit_floor_up
+
+        def eligible_target(s, threshold):
+            if s.token in held:
+                # Held-token health rule: do not keep a decayed position just
+                # because no new token is compelling.  This is strategy, not a
+                # manual call: score below the configured floor exits to cash.
+                return (not self.held_exit_enabled) or s.score >= held_floor()
+            # New entries/rotate-ins require durable execution validation before
+            # they can become targets.  High CMC momentum alone cannot bypass it.
+            return (s.token in validated and s.score > threshold
+                    and confirmed(s, threshold))
+
         if regime is Regime.TREND_DOWN:         # only the strongest counter-trend names
-            eligible = [s.token for s in ranked if s.score > self.down_min_mom
-                        and confirmed(s, self.down_min_mom)]
+            eligible = [s.token for s in ranked if eligible_target(s, self.down_min_mom)]
             limit = self.down_k
         else:
-            eligible = [s.token for s in ranked if s.score > self.min_mom
-                        and confirmed(s, self.min_mom)]
+            eligible = [s.token for s in ranked if eligible_target(s, self.min_mom)]
             limit = self.k
         targets = eligible[:limit]
 

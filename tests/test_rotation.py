@@ -14,6 +14,17 @@ def _portfolio(positions=None):
     return {"cash_usd": 1000, "total_equity_usd": 1000, "positions": positions or {}}
 
 
+def _snap(*tokens):
+    return {
+        t: {
+            "round_trip_loss_pct": 1.2,
+            "risk_level": "low",
+            "history_bars": 99,
+        }
+        for t in tokens
+    }
+
+
 def test_rotation_picks_top_k_in_uptrend(cfg):
     cfg = {**cfg, "decision": {**cfg["decision"], "rotation_top_k": 2, "rotation_min_momentum": 0.05}}
     d = RotationDecider(cfg)
@@ -22,7 +33,7 @@ def test_rotation_picks_top_k_in_uptrend(cfg):
         "CAKE": _sig("CAKE", 0.5, Regime.TREND_UP),
         "LINK": _sig("LINK", 0.1, Regime.TREND_UP),
     }
-    out = d.decide({}, signals, _portfolio(), {})
+    out = d.decide(_snap("ETH", "CAKE", "LINK"), signals, _portfolio(), {})
     buys = [x for x in out if x["action"] == "buy"]
     assert {b["token"] for b in buys} == {"ETH", "CAKE"}   # top 2 by momentum
 
@@ -35,7 +46,7 @@ def test_rotation_downtrend_holds_strong_exits_weak(cfg):
     # downtrend: a strongly-positive name is ridden (counter-trend), a weak one cut
     signals = {"ETH": _sig("ETH", 0.8, Regime.TREND_DOWN),   # strong -> keep
                "CAKE": _sig("CAKE", 0.05, Regime.TREND_DOWN)}  # weak -> exit
-    out = d.decide({}, signals, _portfolio({"CAKE": 5.0}), {})
+    out = d.decide(_snap("ETH", "CAKE"), signals, _portfolio({"CAKE": 5.0}), {})
     actions = {(x["token"], x["action"]) for x in out}
     assert ("CAKE", "close") in actions                     # weak name exited
     assert ("ETH", "buy") in actions                        # strongest name entered
@@ -44,7 +55,7 @@ def test_rotation_downtrend_holds_strong_exits_weak(cfg):
 def test_rotation_downtrend_all_weak_goes_cash(cfg):
     d = RotationDecider(cfg)
     signals = {"ETH": _sig("ETH", 0.05, Regime.TREND_DOWN)}  # below downtrend threshold
-    out = d.decide({}, signals, _portfolio({"ETH": 5.0}), {})
+    out = d.decide(_snap("ETH"), signals, _portfolio({"ETH": 5.0}), {})
     assert all(x["action"] == "close" for x in out)         # nothing strong -> cash
 
 
@@ -63,7 +74,7 @@ def test_rotation_rotates_out_losers(cfg):
         "ETH": _sig("ETH", 0.9, Regime.TREND_UP),
         "CAKE": _sig("CAKE", 0.2, Regime.TREND_UP),
     }
-    out = d.decide({}, signals, _portfolio({"CAKE": 10.0}), {})
+    out = d.decide(_snap("ETH", "CAKE"), signals, _portfolio({"CAKE": 10.0}), {})
     actions = {(x["token"], x["action"]) for x in out}
     assert ("CAKE", "close") in actions
     assert ("ETH", "buy") in actions
@@ -82,7 +93,7 @@ def test_rotation_hurdle_keeps_nearly_equal_held_name(cfg):
     d = RotationDecider(cfg)
     signals = {"ETH": _sig("ETH", 0.60, Regime.TREND_UP),
                "CAKE": _sig("CAKE", 0.55, Regime.TREND_UP)}
-    out = d.decide({}, signals, _portfolio({"CAKE": 5.0}), {})
+    out = d.decide(_snap("ETH", "CAKE"), signals, _portfolio({"CAKE": 5.0}), {})
     assert not any(x["token"] == "CAKE" and x["action"] == "close" for x in out)
 
 
@@ -93,7 +104,7 @@ def test_rotation_targets_sixty_percent_gross_across_two_names(cfg):
     d = RotationDecider(cfg)
     signals = {"ETH": _sig("ETH", 0.8, Regime.TREND_UP),
                "CAKE": _sig("CAKE", 0.7, Regime.TREND_UP)}
-    out = d.decide({}, signals, _portfolio(), {})
+    out = d.decide(_snap("ETH", "CAKE"), signals, _portfolio(), {})
     buys = [x for x in out if x["action"] == "buy"]
     assert len(buys) == 2
     assert all(x["size_pct"] == pytest.approx(0.30) for x in buys)
@@ -108,7 +119,8 @@ def test_divergent_leaderboard_mark_does_not_trigger_top5_mode(cfg):
                "CAKE": _sig("CAKE", 0.7, Regime.TREND_UP)}
     risk = {"leaderboard_rank": 2, "leaderboard_return_pct": 10.0,
             "executable_return_pct": -9.0, "signal_streaks": {"ETH": 2, "CAKE": 2}}
-    buys = [x for x in d.decide({}, signals, _portfolio(), risk) if x["action"] == "buy"]
+    buys = [x for x in d.decide(_snap("ETH", "CAKE"), signals, _portfolio(), risk)
+            if x["action"] == "buy"]
     assert len(buys) == 2
     assert all(x["size_pct"] == pytest.approx(0.30) for x in buys)
 
@@ -123,7 +135,7 @@ def test_top5_mode_emits_trim_for_excess_existing_position(cfg):
     p["position_values"] = {"ETH": 40.0}
     risk = {"leaderboard_rank": 2, "leaderboard_return_pct": 5.0,
             "executable_return_pct": 3.0, "signal_streaks": {"ETH": 2}}
-    out = d.decide({}, signals, p, risk)
+    out = d.decide(_snap("ETH"), signals, p, risk)
     trim = next(x for x in out if x["action"] == "trim")
     assert trim["size_usd"] == pytest.approx(25.0)
 
@@ -131,9 +143,9 @@ def test_top5_mode_emits_trim_for_excess_existing_position(cfg):
 def test_medium_signal_requires_configured_consecutive_ticks(cfg):
     d = RotationDecider(cfg)
     signals = {"ETH": _sig("ETH", 0.40, Regime.TREND_UP)}
-    assert d.decide({}, signals, _portfolio(), {"signal_streaks": {"ETH": 1}}) == []
+    assert d.decide(_snap("ETH"), signals, _portfolio(), {"signal_streaks": {"ETH": 1}}) == []
     assert any(x["action"] == "buy" for x in
-               d.decide({}, signals, _portfolio(), {"signal_streaks": {"ETH": 2}}))
+               d.decide(_snap("ETH"), signals, _portfolio(), {"signal_streaks": {"ETH": 2}}))
 
 
 def test_dynamic_sizing_uses_small_gross_for_borderline_comeback(cfg):
@@ -147,7 +159,7 @@ def test_dynamic_sizing_uses_small_gross_for_borderline_comeback(cfg):
                                                   "high_exposure_pct": 0.55}}}
     d = RotationDecider(cfg)
     signals = {"ETH": _sig("ETH", 0.30, Regime.TREND_DOWN)}
-    buys = [x for x in d.decide({}, signals, _portfolio(),
+    buys = [x for x in d.decide(_snap("ETH"), signals, _portfolio(),
                                 {"signal_streaks": {"ETH": 2}}) if x["action"] == "buy"]
     assert buys[0]["size_pct"] == pytest.approx(0.30)
 
@@ -163,6 +175,23 @@ def test_dynamic_sizing_uses_full_gross_for_strong_comeback(cfg):
                                                   "high_exposure_pct": 0.55}}}
     d = RotationDecider(cfg)
     signals = {"ETH": _sig("ETH", 0.42, Regime.TREND_DOWN)}
-    buys = [x for x in d.decide({}, signals, _portfolio(),
+    buys = [x for x in d.decide(_snap("ETH"), signals, _portfolio(),
                                 {"signal_streaks": {"ETH": 1}}) if x["action"] == "buy"]
     assert buys[0]["size_pct"] == pytest.approx(0.55)
+
+
+def test_rotation_never_buys_unvalidated_high_signal(cfg):
+    d = RotationDecider(cfg)
+    signals = {"SIREN": _sig("SIREN", 0.90, Regime.TREND_DOWN)}
+    out = d.decide({}, signals, _portfolio(), {"signal_streaks": {"SIREN": 10}})
+    assert not any(x["action"] == "buy" for x in out)
+
+
+def test_held_token_decays_below_floor_to_cash(cfg):
+    cfg = {**cfg, "decision": {**cfg["decision"],
+                               "held_exit": {"enabled": True,
+                                             "floor_score_downtrend": 0.24}}}
+    d = RotationDecider(cfg)
+    signals = {"SIREN": _sig("SIREN", 0.20, Regime.TREND_DOWN)}
+    out = d.decide({}, signals, _portfolio({"SIREN": 100.0}), {})
+    assert any(x["token"] == "SIREN" and x["action"] == "close" for x in out)

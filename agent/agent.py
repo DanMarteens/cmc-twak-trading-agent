@@ -23,7 +23,7 @@ import yaml
 from . import risk_gate
 from .cmc_client import build_cmc_client
 from .signal_source import build_signal_source
-from .decision import build_decider, tradeable_buy_tokens
+from .decision import build_decider, runtime_validated_token, tradeable_buy_tokens
 from .executor import AmbiguousExecutionError, build_executor
 from .logbook import DecisionLog, utc_date, utc_hour, utc_now_iso
 from .leaderboard import current_status
@@ -602,6 +602,12 @@ def process_tick(cfg, state, snapshot, prices, decider, executor, log,
             log.event("blocked", token=token, action="buy", reason="not_tradeable: off-universe")
             risk_outcomes.append({"token": token, "action": "buy", "approved": False,
                                   "reason": "not_tradeable: off-universe"})
+            continue
+        if d["action"] == "buy" and not runtime_validated_token(cfg, token, snapshot):
+            reason = "not_execution_validated: no fresh buy->sell round-trip"
+            log.event("blocked", token=token, action="buy", reason=reason)
+            risk_outcomes.append({"token": token, "action": "buy", "approved": False,
+                                  "reason": reason})
             continue
         token_risk = snapshot.get(token, {}).get("token_risk_score", 0)  # TWAK fills live
         verdict = risk_gate.evaluate(

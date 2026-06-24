@@ -134,6 +134,14 @@ decision:
                                          # for half a day (12h backtested slightly worse on the
                                          # short week sample; 4h is the gentler middle).
   rotation_score_hurdle: 0.18            # challenger must beat a held name after costs/risk
+  held_exit:
+    enabled: true
+    # Held-token health floor. A current position may stay below the new-entry
+    # threshold, but not indefinitely: if its own score decays below this floor
+    # the strategy exits to cash instead of "hoping". New entries still require
+    # execution validation and the higher rotation threshold.
+    floor_score_downtrend: 0.24
+    floor_score_uptrend: 0.20
   target_gross_exposure_pct: 0.55        # maximum catch-up mode exposure outside the top five
   dynamic_sizing:
     enabled: true
