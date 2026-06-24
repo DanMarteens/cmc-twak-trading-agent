@@ -340,6 +340,10 @@ class SizingPolicy:
             )
         min_rebalance = float(self.strategy.cfg.get("decision", {}).get("min_rebalance_usd", 1.0))
         if token in state.held and excess >= min_rebalance:
+            age = self.strategy._held_age_seconds(token, portfolio)
+            if (not state.top5_active
+                    and age < self.strategy.min_rebalance_hold_sec):
+                return None
             return TradeIntent(
                 token=token, action="trim", size_usd=excess, confidence=1.0,
                 rationale=f"rebalance to target; top5={state.top5_active}, excess=${excess:.2f}",
@@ -540,6 +544,8 @@ class RotationDecider:
         self.micro_profit_take_pct = float(exit_cfg.get("micro_profit_take_pct", 0.015))
         self.micro_profit_sell_fraction = float(exit_cfg.get("micro_profit_sell_fraction", 0.45))
         self.min_micro_profit_sell_usd = float(exit_cfg.get("min_micro_profit_sell_usd", 1.0))
+        self.min_rebalance_hold_sec = float(d.get(
+            "min_rebalance_hold_seconds", self.held_min_hold_sec_down))
         self._now = 0.0                      # set by process_tick each tick (now_ts)
         self._exited_at: dict[str, float] = {}
         self.last_debug: dict = {}

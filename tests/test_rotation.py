@@ -569,6 +569,34 @@ def test_held_token_micro_profit_take_trims_winner(cfg):
     assert "micro profit take" in trim["rationale"]
 
 
+def test_fresh_recovery_position_not_rebalance_trimmed(cfg):
+    cfg = {**cfg, "decision": {**cfg["decision"],
+                               "rotation_downtrend_topk": 2,
+                               "target_gross_exposure_pct": 0.55,
+                               "min_rebalance_usd": 1.0,
+                               "min_rebalance_hold_seconds": 2700,
+                               "held_exit": {"enabled": True,
+                                             "floor_score_downtrend": 0.20,
+                                             "min_quality_downtrend": -1.0,
+                                             "min_return_6h_downtrend": -0.20},
+                               "dynamic_sizing": {"enabled": False}}}
+    d = RotationDecider(cfg)
+    d._now = 10_000
+    signals = {"LAB": _sig("LAB", 0.41, Regime.TREND_DOWN),
+               "APR": _sig("APR", 0.34, Regime.TREND_DOWN)}
+    snap = _snap("LAB", "APR")
+    snap["LAB"].update({"return_6h": 0.01, "return_24h": 0.12})
+    snap["APR"].update({"return_6h": 0.02, "return_24h": 0.04})
+    portfolio = _portfolio_with_timing(
+        {"LAB": 0.475},
+        values={"LAB": 7.7},
+        avg_prices={"LAB": 16.2},
+        opened_ts={"LAB": 10_000 - 300},
+    )
+    out = d.decide(snap, signals, portfolio, {"signal_streaks": {"LAB": 3, "APR": 3}})
+    assert not any(x["token"] == "LAB" and x["action"] == "trim" for x in out)
+
+
 def test_fresh_losing_recovery_position_requires_bigger_rotation_edge(cfg):
     cfg = {**cfg, "decision": {**cfg["decision"],
                                "rotation_downtrend_topk": 1,

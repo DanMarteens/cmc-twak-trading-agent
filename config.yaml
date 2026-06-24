@@ -223,6 +223,7 @@ decision:
   top5_gross_exposure_pct: 0.05          # defend rank aggressively once inside top five
   top5_max_mark_divergence_pct: 10.0     # ignore an inflated board rank when it disagrees with exits
   min_rebalance_usd: 1.0
+  min_rebalance_hold_seconds: 2700       # no fresh-position rebalance trims unless top5/profit/risk
   signal_confirmation:
     base_score: 0.27
     immediate_score: 0.42                # very strong signals enter on one observation
