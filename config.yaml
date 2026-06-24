@@ -178,6 +178,19 @@ decision:
     low_exposure_pct: 0.30
     mid_exposure_pct: 0.40
     high_exposure_pct: 0.55
+    # Tournament catch-up override: a LAB-like setup should size as high
+    # conviction even when the raw TA score is only medium.  This does NOT bypass
+    # entry freshness, TWAK route validation, risk limits, or DQ sizing.
+    high_conviction_enabled: true
+    high_conviction_exposure_pct: 0.55
+    high_conviction_min_score: 0.30
+    high_conviction_min_x402: 0.25
+    high_conviction_min_cmc: 0.80
+    high_conviction_min_quality: 0.25
+    high_conviction_max_round_trip_loss_pct: 2.5
+    high_conviction_max_token_risk_score: 30
+    high_conviction_min_volume_24h_usd: 5000000
+    high_conviction_catchup_rank_above: 5
     stress_drawdown_pct: 0.18
     stress_exposure_pct: 0.25
   top5_gross_exposure_pct: 0.05          # defend rank aggressively once inside top five

@@ -215,6 +215,16 @@ class RotationDecider:
         self.ds_low_gross = float(ds.get("low_exposure_pct", min(self.target_gross, 0.30)))
         self.ds_mid_gross = float(ds.get("mid_exposure_pct", min(self.target_gross, 0.40)))
         self.ds_high_gross = float(ds.get("high_exposure_pct", self.target_gross))
+        self.ds_high_conviction = bool(ds.get("high_conviction_enabled", False))
+        self.ds_hc_gross = float(ds.get("high_conviction_exposure_pct", self.ds_high_gross))
+        self.ds_hc_min_score = float(ds.get("high_conviction_min_score", self.ds_mid_score))
+        self.ds_hc_min_x402 = float(ds.get("high_conviction_min_x402", 0.25))
+        self.ds_hc_min_cmc = float(ds.get("high_conviction_min_cmc", 0.80))
+        self.ds_hc_min_quality = float(ds.get("high_conviction_min_quality", 0.25))
+        self.ds_hc_max_round_trip = float(ds.get("high_conviction_max_round_trip_loss_pct", 2.5))
+        self.ds_hc_max_risk = float(ds.get("high_conviction_max_token_risk_score", 30.0))
+        self.ds_hc_min_volume = float(ds.get("high_conviction_min_volume_24h_usd", 5_000_000))
+        self.ds_hc_catchup_rank_above = int(ds.get("high_conviction_catchup_rank_above", 5))
         self.ds_stress_dd = float(ds.get("stress_drawdown_pct", 0.18))
         self.ds_stress_gross = float(ds.get("stress_exposure_pct", min(self.target_gross, 0.25)))
         exit_cfg = d.get("held_exit", {}) or {}
@@ -233,8 +243,42 @@ class RotationDecider:
         self._now = 0.0                      # set by process_tick each tick (now_ts)
         self._exited_at: dict[str, float] = {}
 
+    def _needs_catchup(self, risk_limits: dict) -> bool:
+        rank = risk_limits.get("leaderboard_rank")
+        lb_ret = risk_limits.get("leaderboard_return_pct")
+        exec_ret = float(risk_limits.get("executable_return_pct") or 0.0)
+        try:
+            rank_i = int(rank) if rank is not None else None
+        except (TypeError, ValueError):
+            rank_i = None
+        try:
+            lb_ret_f = float(lb_ret) if lb_ret is not None else exec_ret
+        except (TypeError, ValueError):
+            lb_ret_f = exec_ret
+        return (rank_i is None or rank_i > self.ds_hc_catchup_rank_above
+                or min(exec_ret, lb_ret_f) < 0.0)
+
+    def _high_conviction_target(self, token: str, signals: dict[str, TokenSignal],
+                                snapshot: dict, quality: dict[str, float],
+                                risk_limits: dict) -> bool:
+        """LAB-like tournament setup: validated/fresh elsewhere, strong enough to size up."""
+        if not self.ds_high_conviction or token not in signals or not self._needs_catchup(risk_limits):
+            return False
+        s = signals[token]
+        d = snapshot.get(token, {})
+        return (
+            float(s.score) >= self.ds_hc_min_score
+            and float(d.get("x402_token_score", 0.0) or 0.0) >= self.ds_hc_min_x402
+            and float(d.get("cmc_score", 0.0) or 0.0) >= self.ds_hc_min_cmc
+            and float(quality.get(token, -1.0)) >= self.ds_hc_min_quality
+            and float(d.get("round_trip_loss_pct", 100.0) or 100.0) <= self.ds_hc_max_round_trip
+            and float(d.get("token_risk_score", 100.0) or 100.0) <= self.ds_hc_max_risk
+            and float(d.get("cmc_volume_24h", 0.0) or 0.0) >= self.ds_hc_min_volume
+        )
+
     def _catchup_gross(self, targets: list[str], signals: dict[str, TokenSignal],
-                       risk_limits: dict) -> float:
+                       risk_limits: dict, snapshot: dict | None = None,
+                       quality: dict[str, float] | None = None) -> float:
         """Score-scaled comeback exposure.
 
         The bot must participate while behind, but a borderline downtrend signal
@@ -250,6 +294,12 @@ class RotationDecider:
             gross = self.ds_mid_gross
         else:
             gross = self.ds_low_gross
+
+        snapshot = snapshot or {}
+        quality = quality or {}
+        if any(self._high_conviction_target(t, signals, snapshot, quality, risk_limits)
+               for t in targets):
+            gross = max(gross, self.ds_hc_gross)
 
         dd_vals = []
         for key in ("leaderboard_drawdown_pct", "current_drawdown_pct"):
@@ -470,7 +520,8 @@ class RotationDecider:
         mark_gap = abs(float(lb_ret) - exec_ret) if lb_ret is not None else float("inf")
         top5_active = bool(rank and rank <= 5 and exec_ret >= 0
                            and mark_gap <= self.max_rank_mark_divergence)
-        gross = self.top5_gross if top5_active else self._catchup_gross(targets, signals, risk_limits)
+        gross = (self.top5_gross if top5_active
+                 else self._catchup_gross(targets, signals, risk_limits, snapshot, quality))
         target_value = portfolio["total_equity_usd"] * gross / max(len(targets), 1)
         cash = max(portfolio["cash_usd"], 0.0)
         min_rebalance = float(self.cfg.get("decision", {}).get("min_rebalance_usd", 1.0))

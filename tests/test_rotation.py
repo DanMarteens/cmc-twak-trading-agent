@@ -187,6 +187,99 @@ def test_dynamic_sizing_uses_full_gross_for_strong_comeback(cfg):
     assert buys[0]["size_pct"] == pytest.approx(0.55)
 
 
+def test_high_conviction_medium_signal_gets_full_catchup_size(cfg):
+    cfg = {**cfg, "decision": {**cfg["decision"], "rotation_downtrend_min_momentum": 0.28,
+                               "dynamic_sizing": {"enabled": True,
+                                                  "low_score": 0.28,
+                                                  "mid_score": 0.32,
+                                                  "high_score": 0.38,
+                                                  "low_exposure_pct": 0.30,
+                                                  "mid_exposure_pct": 0.40,
+                                                  "high_exposure_pct": 0.55,
+                                                  "high_conviction_enabled": True,
+                                                  "high_conviction_exposure_pct": 0.55,
+                                                  "high_conviction_min_score": 0.30,
+                                                  "high_conviction_min_x402": 0.25,
+                                                  "high_conviction_min_cmc": 0.80,
+                                                  "high_conviction_min_quality": 0.25,
+                                                  "high_conviction_max_round_trip_loss_pct": 2.5,
+                                                  "high_conviction_max_token_risk_score": 30,
+                                                  "high_conviction_min_volume_24h_usd": 5_000_000,
+                                                  "high_conviction_catchup_rank_above": 5}}}
+    d = RotationDecider(cfg)
+    signals = {"ETH": _sig("ETH", 0.316, Regime.TREND_DOWN)}
+    snap = _snap("ETH")
+    snap["ETH"].update({
+        "return_6h": 0.035,
+        "return_24h": 0.13,
+        "cmc_pct_1h": 0.009,
+        "cmc_pct_24h": 0.10,
+        "cmc_pct_7d": 0.33,
+        "cmc_volume_24h": 65_000_000,
+        "cmc_volume_change_24h": 0.2,
+        "cmc_score": 1.0,
+        "x402_token_score": 0.34,
+        "token_risk_score": 10,
+        "round_trip_loss_pct": 1.9,
+        "distance_from_48h_high": -0.02,
+    })
+    buys = [x for x in d.decide(snap, signals, _portfolio(),
+                                {"signal_streaks": {"ETH": 2},
+                                 "leaderboard_rank": 36,
+                                 "leaderboard_return_pct": -7.0,
+                                 "executable_return_pct": -7.0})
+            if x["action"] == "buy"]
+    assert buys[0]["size_pct"] == pytest.approx(0.55)
+    assert "gross=0.55" in buys[0]["rationale"]
+
+
+def test_high_conviction_size_still_respects_stress_drawdown_cap(cfg):
+    cfg = {**cfg, "decision": {**cfg["decision"], "rotation_downtrend_min_momentum": 0.28,
+                               "dynamic_sizing": {"enabled": True,
+                                                  "low_score": 0.28,
+                                                  "mid_score": 0.32,
+                                                  "high_score": 0.38,
+                                                  "low_exposure_pct": 0.30,
+                                                  "mid_exposure_pct": 0.40,
+                                                  "high_exposure_pct": 0.55,
+                                                  "high_conviction_enabled": True,
+                                                  "high_conviction_exposure_pct": 0.55,
+                                                  "high_conviction_min_score": 0.30,
+                                                  "high_conviction_min_x402": 0.25,
+                                                  "high_conviction_min_cmc": 0.80,
+                                                  "high_conviction_min_quality": 0.25,
+                                                  "high_conviction_max_round_trip_loss_pct": 2.5,
+                                                  "high_conviction_max_token_risk_score": 30,
+                                                  "high_conviction_min_volume_24h_usd": 5_000_000,
+                                                  "stress_drawdown_pct": 0.18,
+                                                  "stress_exposure_pct": 0.25}}}
+    d = RotationDecider(cfg)
+    signals = {"ETH": _sig("ETH", 0.316, Regime.TREND_DOWN)}
+    snap = _snap("ETH")
+    snap["ETH"].update({
+        "return_6h": 0.035,
+        "return_24h": 0.13,
+        "cmc_pct_1h": 0.009,
+        "cmc_pct_24h": 0.10,
+        "cmc_pct_7d": 0.33,
+        "cmc_volume_24h": 65_000_000,
+        "cmc_volume_change_24h": 0.2,
+        "cmc_score": 1.0,
+        "x402_token_score": 0.34,
+        "token_risk_score": 10,
+        "round_trip_loss_pct": 1.9,
+        "distance_from_48h_high": -0.02,
+    })
+    buys = [x for x in d.decide(snap, signals, _portfolio(),
+                                {"signal_streaks": {"ETH": 2},
+                                 "leaderboard_rank": 36,
+                                 "leaderboard_return_pct": -7.0,
+                                 "executable_return_pct": -7.0,
+                                 "leaderboard_drawdown_pct": 18.1})
+            if x["action"] == "buy"]
+    assert buys[0]["size_pct"] == pytest.approx(0.25)
+
+
 def test_rotation_never_buys_unvalidated_high_signal(cfg):
     d = RotationDecider(cfg)
     signals = {"SIREN": _sig("SIREN", 0.90, Regime.TREND_DOWN)}
