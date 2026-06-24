@@ -587,6 +587,7 @@ def process_tick(cfg, state, snapshot, prices, decider, executor, log,
     tradeable = tradeable_buy_tokens(cfg)
     risk_outcomes = []
 
+    pending = []
     for d in decisions:
         token = d["token"]
         log.event("decision", **d)
@@ -617,12 +618,53 @@ def process_tick(cfg, state, snapshot, prices, decider, executor, log,
         risk_outcomes.append({"token": token, "action": d["action"], "approved": True,
                               "reason": verdict.reason,
                               "adjusted_size_usd": round(verdict.adjusted_size_usd, 6)})
+        pending.append((d, verdict))
 
+    # Rotation is a two-leg intent: close the stale holding, then buy the new
+    # target.  Risk checks must happen before either leg mutates state; otherwise
+    # the close updates last_trade_ts and the buy is falsely blocked by the
+    # anti-churn cooldown.  If the entry leg was not approved, do not close a
+    # merely-rotated position into cash unless a separate stop/profit-lock forced
+    # the exit earlier in this tick.
+    approved_buys = [d for d, _ in pending if d.get("action") == "buy"]
+    rotation_close_tokens = {
+        d["token"] for d, _ in pending
+        if d.get("action") == "close" and "rotate out" in str(d.get("rationale", ""))
+    }
+    if rotation_close_tokens and not approved_buys:
+        pending = [
+            (d, v) for d, v in pending
+            if not (d.get("action") == "close" and d.get("token") in rotation_close_tokens)
+        ]
+        risk_outcomes = [
+            r for r in risk_outcomes
+            if not (r.get("approved") and r.get("action") == "close"
+                    and r.get("token") in rotation_close_tokens)
+        ]
+        for token in sorted(rotation_close_tokens):
+            reason = "paired_rotation_entry_not_approved"
+            log.event("blocked", token=token, action="close", reason=reason)
+            risk_outcomes.append({"token": token, "action": "close", "approved": False,
+                                  "reason": reason})
+
+    filled_rotation_closes = set()
+    approved_rotation_closes = set(rotation_close_tokens)
+    for d, verdict in pending:
+        token = d["token"]
         execution_size = (float(d.get("size_usd", 0.0)) if d["action"] == "trim"
                           else verdict.adjusted_size_usd)
-        _exec_and_log(executor, state, cfg, tick_id, token, d["action"],
-                      execution_size, prices.get(token, 0.0),
-                      log, verdict.reason, now=now_ts)
+        if d["action"] == "buy" and approved_rotation_closes \
+                and not filled_rotation_closes.issuperset(approved_rotation_closes):
+            reason = "paired_rotation_close_not_filled"
+            log.event("blocked", token=token, action="buy", reason=reason)
+            risk_outcomes.append({"token": token, "action": "buy", "approved": False,
+                                  "reason": reason})
+            continue
+        done = _exec_and_log(executor, state, cfg, tick_id, token, d["action"],
+                             execution_size, prices.get(token, 0.0),
+                             log, verdict.reason, now=now_ts)
+        if done and d["action"] == "close" and token in approved_rotation_closes:
+            filled_rotation_closes.add(token)
 
     log.write(_decision_trace(cfg, tick_id, snapshot, signals, portfolio, risk_limits,
                               decisions, tradeable, risk_outcomes=risk_outcomes))

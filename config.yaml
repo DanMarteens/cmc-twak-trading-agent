@@ -53,7 +53,7 @@ risk:
   min_trades_per_day: 1
   min_trades_per_week: 7
   force_daily_trade: false      # disabled: never trade just to satisfy daily activity
-  max_trades_per_day: 4         # NEW ENTRIES only; sniper mode gets one comeback shot
+  max_trades_per_day: 12        # NEW ENTRIES only; enough for rotations without churn
   min_seconds_between_trades: 900   # one 15-minute loop; other anti-churn gates still apply
                                     # budget isn't burned in the first few hours. Closes are
                                     # EXEMPT (risk_gate lets exits through), so this only paces
