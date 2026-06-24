@@ -363,7 +363,9 @@ def _activity(rows, cfg, st):
         # agent DID). Full transparency stays via "raw log" + the rule-adherence count.
         elif k in ("position_stop", "kill_switch"):
             items.append({"kind": k, "token": tok, "ts": ts})
-    return items[-12:][::-1]
+    # Keep enough history for the vertical "show more" pagination in the UI.
+    # The raw JSONL still carries the full tail for audits.
+    return items[-120:][::-1]
 
 
 def main():
@@ -520,6 +522,11 @@ background-attachment:fixed;padding:40px 20px 32px;-webkit-font-smoothing:antial
 .act .tm{color:var(--mut2);font-size:10.5px;font-variant-numeric:tabular-nums;width:42px;text-align:right}
 @media(max-width:620px){.act .aval{display:none}}
 .act a{color:var(--b);text-decoration:none;font-weight:600}
+.morebtn{width:100%;margin-top:12px;padding:10px 14px;border-radius:12px;border:1px solid var(--bd);
+ background:rgba(255,255,255,.025);color:var(--b);font:inherit;font-size:11px;font-weight:700;
+ cursor:pointer;text-transform:uppercase;letter-spacing:.35px}
+.morebtn:hover{background:rgba(138,169,255,.08);border-color:rgba(138,169,255,.25)}
+.morebtn:disabled{display:none}
 /* sponsor stack */
 .stk{display:flex;align-items:center;gap:13px;padding:11px 0;border-bottom:1px solid rgba(255,255,255,.04)}
 .stk:last-child{border:0}
@@ -611,6 +618,7 @@ background-attachment:fixed;padding:40px 20px 32px;-webkit-font-smoothing:antial
 <div class="card">
   <div class="ph">Recent activity <span><a href="decisions.jsonl">raw log ↓</a></span></div>
   <div id="activity"></div>
+  <button class="morebtn" id="activityMore" type="button">show more</button>
 </div>
 
 <div class="card">
@@ -731,8 +739,10 @@ if(D.positions&&D.positions.length){
    +`<span class="pov">$${p.value.toFixed(2)}</span></div>`;}).join('');
 }else $('poscard').style.display='none';
 
-// recent activity — full log, enriched: buys = entry+size; exits = entry→exit + P&L% + value
-$('activity').innerHTML=((D.activity&&D.activity.length)?D.activity:[]).map(a=>{
+// recent activity — 12 rows by default, then vertical pagination in 12-row chunks
+const ACTIVITY_PAGE=12;
+let activityVisible=ACTIVITY_PAGE;
+function activityHTML(a){
  const t=a.ts?fmtTime(a.ts):'';
  if(a.kind==='fill'){
   const buy=a.action==='buy', trim=a.action==='trim', col=buy?'var(--g)':'var(--b)', tag=buy?'BUY':(trim?'TRIM':'CLOSE');
@@ -750,7 +760,20 @@ $('activity').innerHTML=((D.activity&&D.activity.length)?D.activity:[]).map(a=>{
   return `<div class="act"><span style="width:17px;display:inline-block"></span><span class="kd" style="color:var(--am)">BLOCKED</span><span class="tkn">${a.token||''}</span><span class="rs">${a.reason||''}</span><span class="apnl"></span><span class="aval"></span><span class="tm">${t}</span></div>`;}
  const lbl={position_stop:'STOP',kill_switch:'KILL'}[a.kind]||(a.kind||'').toUpperCase();
  return `<div class="act"><span style="width:17px;display:inline-block"></span><span class="kd" style="color:var(--r)">${lbl}</span><span class="tkn">${a.token||''}</span><span class="rs"></span><span class="apnl"></span><span class="aval"></span><span class="tm">${t}</span></div>`;
-}).join('')||'<div class="rs" style="color:var(--mut2);font-size:12px;padding:6px 0">No activity yet — the agent is holding cash. Trades appear here as it acts.</div>';
+}
+function renderActivity(){
+ const rows=(D.activity&&D.activity.length)?D.activity:[];
+ $('activity').innerHTML=rows.slice(0,activityVisible).map(activityHTML).join('')||
+  '<div class="rs" style="color:var(--mut2);font-size:12px;padding:6px 0">No activity yet — the agent is holding cash. Trades appear here as it acts.</div>';
+ const btn=$('activityMore');
+ if(btn){
+  const left=Math.max(0,rows.length-activityVisible);
+  btn.disabled=left<=0;
+  btn.textContent=left>0?`show more · ${Math.min(ACTIVITY_PAGE,left)} of ${left}`:'all activity shown';
+ }
+}
+$('activityMore').addEventListener('click',()=>{activityVisible+=ACTIVITY_PAGE;renderActivity();});
+renderActivity();
 
 // sponsor stack — all 3 integrations, load-bearing, with live proof
 (function(){const bnb=D.attest_tx?('https://bscscan.com/tx/'+D.attest_tx):('https://bscscan.com/address/'+D.address);
