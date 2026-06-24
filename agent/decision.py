@@ -393,6 +393,9 @@ class RotationDecider:
         for token in held:
             if token not in eligible or token in targets:
                 continue
+            held_signal = signals.get(token)
+            if held_signal is None or not held_healthy(held_signal):
+                continue
             if len(targets) < limit:
                 targets.append(token)
                 continue
