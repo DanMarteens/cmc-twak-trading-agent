@@ -206,6 +206,17 @@ def load_config(path: str = "config.yaml") -> dict:
     # Mode is overridable by env so a server can run paper/live without editing
     # (and conflicting with) the repo's config.yaml on git pull.
     cfg["mode"] = os.environ.get("AGENT_MODE", cfg.get("mode", "dry_run"))
+    # Safety rail: a local/diagnostic dry-run must never mutate the live state
+    # files.  This protects production from accidental `python -m agent.agent
+    # --once` invocations without AGENT_MODE=live (mock fills would otherwise
+    # contaminate the real dashboard/state).
+    if cfg["mode"] != "live" and cfg.get("safety", {}).get("isolate_non_live_state", True):
+        mode = "".join(c if c.isalnum() or c in ("-", "_") else "_" for c in cfg["mode"])
+        paths = cfg.setdefault("paths", {})
+        if paths.get("state_file") == "state/portfolio.json":
+            paths["state_file"] = f"state/{mode}_portfolio.json"
+        if paths.get("decision_log") == "logs/decisions.jsonl":
+            paths["decision_log"] = f"logs/{mode}_decisions.jsonl"
     return cfg
 
 
