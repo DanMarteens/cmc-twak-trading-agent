@@ -173,16 +173,20 @@ decision:
     # capped by scout_exposure_pct.
     scout_exception_enabled: true
     scout_exposure_pct: 0.18
-    scout_min_score: 0.31
-    scout_min_quality_downtrend: 0.30
+    scout_min_score: 0.28
+    # If x402 coverage is sparse, allow a tiny CMC/TWAK-confirmed scout only
+    # when cross-sectional quality is genuinely high. This is deliberately more
+    # selective than the old x402-backed scout so we do not spray small churn
+    # trades across mediocre bounces.
+    scout_min_quality_downtrend: 0.65
     scout_min_return_6h_downtrend: -0.02
-    scout_max_return_6h_downtrend: 0.02
+    scout_max_return_6h_downtrend: 0.06
     scout_min_return_24h_downtrend: 0.02
-    scout_max_cmc_pct_24h_downtrend: 0.12
+    scout_max_cmc_pct_24h_downtrend: 0.18
     scout_max_cmc_pct_7d_downtrend: 0.30
-    scout_min_x402: 0.25
+    scout_min_x402: 0.0
     scout_min_cmc: 0.25
-    scout_max_round_trip_loss_pct: 1.8
+    scout_max_round_trip_loss_pct: 2.0
     scout_max_token_risk_score: 30
     scout_min_volume_24h_usd: 5000000
   recovery_escalation:
