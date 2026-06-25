@@ -1123,24 +1123,50 @@ class LLMDecider:
         round_trip = float(details.get("round_trip_loss_pct") or 999.0)
         token_risk = float(details.get("token_risk_score") or 999.0)
         r6 = float(details.get("return_6h") or 0.0)
-        if score < float(llm_cfg.get("cash_veto_override_min_score", 0.35)):
+        entry_cfg = self.cfg.get("decision", {}).get("entry_filter", {}) or {}
+        is_scout = "validated_scout" in str(candidate.get("rationale", ""))
+        min_score = float(llm_cfg.get(
+            "cash_veto_override_scout_min_score" if is_scout else "cash_veto_override_min_score",
+            entry_cfg.get("scout_min_score", 0.31) if is_scout else 0.35))
+        min_cmc = float(llm_cfg.get(
+            "cash_veto_override_scout_min_cmc" if is_scout else "cash_veto_override_min_cmc",
+            entry_cfg.get("scout_min_cmc", 0.25) if is_scout else 0.75))
+        min_x402 = float(llm_cfg.get(
+            "cash_veto_override_scout_min_x402" if is_scout else "cash_veto_override_min_x402",
+            entry_cfg.get("scout_min_x402", 0.25) if is_scout else 0.25))
+        max_round_trip = float(llm_cfg.get(
+            "cash_veto_override_scout_max_round_trip_loss_pct"
+            if is_scout else "cash_veto_override_max_round_trip_loss_pct",
+            entry_cfg.get("scout_max_round_trip_loss_pct", 1.8) if is_scout else 2.5))
+        max_risk = float(llm_cfg.get(
+            "cash_veto_override_scout_max_token_risk_score"
+            if is_scout else "cash_veto_override_max_token_risk_score",
+            entry_cfg.get("scout_max_token_risk_score", 30.0) if is_scout else 30.0))
+        min_r6 = float(llm_cfg.get(
+            "cash_veto_override_scout_min_return_6h"
+            if is_scout else "cash_veto_override_min_return_6h",
+            entry_cfg.get("scout_min_return_6h_downtrend", -0.02) if is_scout else -0.005))
+        if score < min_score:
             return None
-        if cmc < float(llm_cfg.get("cash_veto_override_min_cmc", 0.75)):
+        if cmc < min_cmc:
             return None
-        if x402 < float(llm_cfg.get("cash_veto_override_min_x402", 0.25)):
+        if x402 < min_x402:
             return None
-        if round_trip > float(llm_cfg.get("cash_veto_override_max_round_trip_loss_pct", 2.5)):
+        if round_trip > max_round_trip:
             return None
-        if token_risk > float(llm_cfg.get("cash_veto_override_max_token_risk_score", 30.0)):
+        if token_risk > max_risk:
             return None
-        if r6 < float(llm_cfg.get("cash_veto_override_min_return_6h", -0.005)):
+        if r6 < min_r6:
             return None
 
         keep = dict(candidate)
-        max_size = float(llm_cfg.get("cash_veto_override_size_pct", 0.40))
+        max_size = float(llm_cfg.get(
+            "cash_veto_override_scout_size_pct" if is_scout else "cash_veto_override_size_pct",
+            entry_cfg.get("scout_exposure_pct", 0.18) if is_scout else 0.40))
         keep["size_pct"] = min(float(candidate.get("size_pct", 0.0)), max_size)
         keep["confidence"] = candidate["confidence"]
-        keep["rationale"] += "; AI cash-veto overridden by high-conviction recovery guardrail"
+        kind = "scout" if is_scout else "high-conviction"
+        keep["rationale"] += f"; AI cash-veto overridden by {kind} recovery guardrail"
         return keep
 
     def decide(self, snapshot, signals, portfolio, risk_limits):
@@ -1182,6 +1208,7 @@ class LLMDecider:
                 s = text[text.find("{"): text.rfind("}") + 1]  # strip any ``` fences
                 model = _validate(json.loads(s).get("decisions", []))
                 approved = {(d["token"], d["action"]): d for d in model}
+                explicit_holds = {d["token"]: d for d in model if d.get("action") == "hold"}
                 out = []
                 approved_tokens = []
                 reduced = []
@@ -1223,10 +1250,11 @@ class LLMDecider:
                             })
                             continue
                     elif candidate["action"] not in ("close", "sell", "trim"):
+                        hold = explicit_holds.get(candidate["token"], {})
                         vetoed.append({
                             "token": candidate["token"],
                             "action": candidate["action"],
-                            "rationale": "omitted_by_ai_review",
+                            "rationale": hold.get("rationale", "omitted_by_ai_review"),
                         })
                 source = base_debug.get("suppression_source")
                 override = None

@@ -88,6 +88,87 @@ def test_llm_cash_preservation_veto_can_be_overridden_for_high_conviction(monkey
                     "rationale": "deterministic; AI cash-veto overridden by high-conviction recovery guardrail"}]
 
 
+def test_llm_cash_preservation_veto_can_be_overridden_for_validated_scout(monkeypatch, cfg):
+    cfg = {**cfg,
+           "decision": {**cfg["decision"],
+                        "entry_filter": {**cfg["decision"]["entry_filter"],
+                                         "scout_exposure_pct": 0.18,
+                                         "scout_min_score": 0.31,
+                                         "scout_min_cmc": 0.25,
+                                         "scout_min_x402": 0.25,
+                                         "scout_min_return_6h_downtrend": -0.02,
+                                         "scout_max_round_trip_loss_pct": 1.8,
+                                         "scout_max_token_risk_score": 30}},
+           "llm": {**cfg["llm"], "second_gate": True,
+                   "cash_veto_override_enabled": True}}
+
+    class ScoutBase:
+        last_debug = {
+            "top_ranked": [{
+                "token": "XPL",
+                "score": 0.342,
+                "cmc_score": 0.42,
+                "x402_token_score": 0.37,
+                "round_trip_loss_pct": 1.36,
+                "token_risk_score": 10,
+                "return_6h": -0.011,
+            }]
+        }
+
+        def decide(self, snapshot, signals, portfolio, risk_limits):
+            return [{"token": "XPL", "action": "buy", "size_pct": 0.18,
+                     "confidence": 0.72,
+                     "rationale": "rotate in: validated_scout, gross=0.18"}]
+
+    monkeypatch.setattr(decision.llm, "complete", lambda *a, **k: (
+        '{"decisions":[{"token":"XPL","action":"hold","size_pct":0,'
+        '"confidence":0,"rationale":"trend_down preserve cash"}]}'
+    ))
+    out = LLMDecider(cfg, fallback=ScoutBase()).decide(
+        {}, {}, {"positions": {}}, {"leaderboard_rank": 33,
+                                    "leaderboard_drawdown_pct": 17.3})
+    assert out == [{"token": "XPL", "action": "buy", "size_pct": 0.18,
+                    "confidence": 0.72,
+                    "rationale": "rotate in: validated_scout, gross=0.18; AI cash-veto overridden by scout recovery guardrail"}]
+
+
+def test_llm_cash_preservation_veto_still_blocks_scout_with_hard_risk(monkeypatch, cfg):
+    cfg = {**cfg,
+           "decision": {**cfg["decision"],
+                        "entry_filter": {**cfg["decision"]["entry_filter"],
+                                         "scout_max_round_trip_loss_pct": 1.8}},
+           "llm": {**cfg["llm"], "second_gate": True,
+                   "cash_veto_override_enabled": True}}
+
+    class ScoutBase:
+        last_debug = {
+            "top_ranked": [{
+                "token": "XPL",
+                "score": 0.36,
+                "cmc_score": 0.60,
+                "x402_token_score": 0.37,
+                "round_trip_loss_pct": 1.36,
+                "token_risk_score": 10,
+                "return_6h": -0.002,
+            }]
+        }
+
+        def decide(self, snapshot, signals, portfolio, risk_limits):
+            return [{"token": "XPL", "action": "buy", "size_pct": 0.18,
+                     "confidence": 0.72,
+                     "rationale": "rotate in: validated_scout, gross=0.18"}]
+
+    monkeypatch.setattr(decision.llm, "complete", lambda *a, **k: (
+        '{"decisions":[{"token":"XPL","action":"hold","size_pct":0,'
+        '"confidence":0,"rationale":"liquidity route risk"}]}'
+    ))
+    out = LLMDecider(cfg, fallback=ScoutBase()).decide(
+        {}, {}, {"positions": {}}, {"leaderboard_rank": 33,
+                                    "leaderboard_drawdown_pct": 17.3})
+    assert out == []
+    assert LLMDecider(cfg, fallback=ScoutBase())
+
+
 def test_deny_buy_lifts_only_after_executable_validation(cfg):
     cfg = {**cfg, "twak": {**cfg["twak"],
                            "token_contracts": {"ZETA": "0x1", "CAKE": "0x2"},
