@@ -524,6 +524,30 @@ class RotationDecider:
             "pullback_max_round_trip_loss_pct", 2.0))
         self.pullback_max_risk = float(entry_cfg.get(
             "pullback_max_token_risk_score", 30.0))
+        self.scout_exception_enabled = bool(entry_cfg.get(
+            "scout_exception_enabled", False))
+        self.scout_gross = float(entry_cfg.get("scout_exposure_pct", 0.18))
+        self.scout_min_score = float(entry_cfg.get("scout_min_score", 0.31))
+        self.scout_min_quality_down = float(entry_cfg.get(
+            "scout_min_quality_downtrend", 0.30))
+        self.scout_min_r6_down = float(entry_cfg.get(
+            "scout_min_return_6h_downtrend", -0.02))
+        self.scout_max_r6_down = float(entry_cfg.get(
+            "scout_max_return_6h_downtrend", 0.02))
+        self.scout_min_r24_down = float(entry_cfg.get(
+            "scout_min_return_24h_downtrend", 0.02))
+        self.scout_max_c24_down = float(entry_cfg.get(
+            "scout_max_cmc_pct_24h_downtrend", self.max_entry_cmc_24h_down))
+        self.scout_max_c7_down = float(entry_cfg.get(
+            "scout_max_cmc_pct_7d_downtrend", self.max_entry_cmc_7d_down))
+        self.scout_min_x402 = float(entry_cfg.get("scout_min_x402", 0.25))
+        self.scout_min_cmc = float(entry_cfg.get("scout_min_cmc", 0.25))
+        self.scout_max_round_trip = float(entry_cfg.get(
+            "scout_max_round_trip_loss_pct", 1.8))
+        self.scout_max_risk = float(entry_cfg.get(
+            "scout_max_token_risk_score", 30.0))
+        self.scout_min_volume = float(entry_cfg.get(
+            "scout_min_volume_24h_usd", 5_000_000))
         ds = d.get("dynamic_sizing", {}) or {}
         self.dynamic_sizing = bool(ds.get("enabled", False))
         self.ds_low_score = float(ds.get("low_score", self.down_min_mom))
@@ -673,6 +697,7 @@ class RotationDecider:
             and float(d.get("token_risk_score", 100.0) or 100.0) <= self.ds_hc_max_risk
             and float(d.get("cmc_volume_24h", 0.0) or 0.0) >= self.ds_hc_min_volume
             and not self._pullback_exception(s, snapshot, quality)
+            and not self._scout_exception(s, snapshot, quality)
         )
 
     def _pullback_exception(self, signal: TokenSignal, snapshot: dict,
@@ -703,6 +728,36 @@ class RotationDecider:
             and float(d.get("token_risk_score", 100.0) or 100.0) <= self.pullback_max_risk
         )
 
+    def _scout_exception(self, signal: TokenSignal, snapshot: dict,
+                         quality: dict[str, float]) -> bool:
+        """Allow a small recovery probe when x402/CMC/route agree before 6h turns green.
+
+        This is deliberately smaller and stricter than a normal entry.  It exists
+        for tournament catch-up mode: a validated token with low route friction,
+        positive 24h structure, and non-terrible 6h can get a toe-hold instead of
+        forcing the bot to stay 100% cash until the move is already obvious.
+        """
+        if not self.scout_exception_enabled or signal.regime is not Regime.TREND_DOWN:
+            return False
+        d = snapshot.get(signal.token, {})
+        r6 = float(d.get("return_6h", 0.0) or 0.0)
+        r24 = float(d.get("return_24h", 0.0) or 0.0)
+        c24 = float(d.get("cmc_pct_24h", 0.0) or 0.0)
+        c7 = float(d.get("cmc_pct_7d", 0.0) or 0.0)
+        return (
+            float(signal.score) >= self.scout_min_score
+            and float(quality.get(signal.token, -1.0)) >= self.scout_min_quality_down
+            and self.scout_min_r6_down <= r6 <= self.scout_max_r6_down
+            and r24 >= self.scout_min_r24_down
+            and c24 <= self.scout_max_c24_down
+            and c7 <= self.scout_max_c7_down
+            and float(d.get("x402_token_score", 0.0) or 0.0) >= self.scout_min_x402
+            and float(d.get("cmc_score", 0.0) or 0.0) >= self.scout_min_cmc
+            and float(d.get("round_trip_loss_pct", 100.0) or 100.0) <= self.scout_max_round_trip
+            and float(d.get("token_risk_score", 100.0) or 100.0) <= self.scout_max_risk
+            and float(d.get("cmc_volume_24h", 0.0) or 0.0) >= self.scout_min_volume
+        )
+
     def _catchup_gross(self, targets: list[str], signals: dict[str, TokenSignal],
                        risk_limits: dict, snapshot: dict | None = None,
                        quality: dict[str, float] | None = None) -> float:
@@ -726,6 +781,8 @@ class RotationDecider:
         quality = quality or {}
         pullback_targets = [t for t in targets
                             if t in signals and self._pullback_exception(signals[t], snapshot, quality)]
+        scout_targets = [t for t in targets
+                         if t in signals and self._scout_exception(signals[t], snapshot, quality)]
         high_conviction_targets = [t for t in targets
                                    if self._high_conviction_target(t, signals, snapshot,
                                                                    quality, risk_limits)]
@@ -733,6 +790,8 @@ class RotationDecider:
             gross = max(gross, self.ds_hc_gross)
         elif pullback_targets:
             gross = max(gross, self.pullback_gross)
+        elif scout_targets:
+            gross = min(gross, self.scout_gross)
 
         if self.ds_risk_adjusted and not high_conviction_targets:
             caps = []
@@ -829,6 +888,8 @@ class RotationDecider:
                 return False, f"low_quality:{q:.3f}"
             if self._pullback_exception(signal, snapshot, quality):
                 return True, "validated_pullback"
+            if self._scout_exception(signal, snapshot, quality):
+                return True, "validated_scout"
             if r6 < self.min_entry_r6_down or r6 > self.max_entry_r6_down:
                 return False, f"bad_6h:{r6:.3f}"
             if c1 > self.max_entry_cmc_1h_down:

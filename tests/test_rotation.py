@@ -643,6 +643,153 @@ def test_downtrend_pullback_exception_rejects_expensive_round_trip(cfg):
     assert not any(x["token"] == "ETH" and x["action"] == "buy" for x in out)
 
 
+def test_downtrend_scout_exception_allows_small_recovery_probe(cfg):
+    cfg = {**cfg, "decision": {**cfg["decision"],
+                               "rotation_downtrend_min_momentum": 0.28,
+                               "entry_filter": {"enabled": True,
+                                                "min_quality_downtrend": -1.0,
+                                                "min_return_6h_downtrend": 0.0,
+                                                "max_return_6h_downtrend": 0.08,
+                                                "scout_exception_enabled": True,
+                                                "scout_exposure_pct": 0.18,
+                                                "scout_min_score": 0.31,
+                                                "scout_min_quality_downtrend": 0.30,
+                                                "scout_min_return_6h_downtrend": -0.02,
+                                                "scout_max_return_6h_downtrend": 0.02,
+                                                "scout_min_return_24h_downtrend": 0.02,
+                                                "scout_max_cmc_pct_24h_downtrend": 0.12,
+                                                "scout_max_cmc_pct_7d_downtrend": 0.30,
+                                                "scout_min_x402": 0.25,
+                                                "scout_min_cmc": 0.25,
+                                                "scout_max_round_trip_loss_pct": 1.8,
+                                                "scout_max_token_risk_score": 30,
+                                                "scout_min_volume_24h_usd": 5_000_000},
+                               "dynamic_sizing": {"enabled": True,
+                                                  "low_score": 0.28,
+                                                  "mid_score": 0.32,
+                                                  "high_score": 0.38,
+                                                  "low_exposure_pct": 0.20,
+                                                  "mid_exposure_pct": 0.40,
+                                                  "high_exposure_pct": 0.55,
+                                                  "risk_adjusted_enabled": True,
+                                                  "medium_risk_threshold": 30,
+                                                  "medium_risk_gross_cap": 0.15,
+                                                  "weak_cmc_threshold": 0.40,
+                                                  "weak_cmc_gross_cap": 0.30}}}
+    d = RotationDecider(cfg)
+    signals = {
+        "ETH": _sig("ETH", 0.335, Regime.TREND_DOWN),
+        "LINK": _sig("LINK", 0.290, Regime.TREND_DOWN),
+        "DOGE": _sig("DOGE", 0.280, Regime.TREND_DOWN),
+    }
+    snap = _snap("ETH", "LINK", "DOGE")
+    snap["ETH"].update({
+        "return_6h": -0.012,
+        "return_24h": 0.05,
+        "cmc_pct_1h": -0.01,
+        "cmc_pct_24h": 0.05,
+        "cmc_pct_7d": -0.10,
+        "cmc_volume_24h": 20_000_000,
+        "cmc_volume_change_24h": 0.20,
+        "cmc_score": 0.35,
+        "x402_token_score": 0.27,
+        "token_risk_score": 10,
+        "round_trip_loss_pct": 1.4,
+        "distance_from_48h_high": -0.04,
+    })
+    for token in ("LINK", "DOGE"):
+        snap[token].update({
+            "return_6h": -0.05,
+            "return_24h": -0.10,
+            "cmc_pct_24h": -0.05,
+            "cmc_pct_7d": -0.20,
+            "cmc_volume_24h": 10_000_000,
+            "cmc_score": 0.10,
+            "x402_token_score": 0.10,
+            "token_risk_score": 10,
+            "round_trip_loss_pct": 1.4,
+        })
+    buys = [x for x in d.decide(snap, signals, _portfolio(),
+                                {"signal_streaks": {"ETH": 3, "LINK": 3, "DOGE": 3},
+                                 "leaderboard_rank": 31,
+                                 "leaderboard_return_pct": -9.0,
+                                 "executable_return_pct": -9.0})
+            if x["action"] == "buy"]
+    assert buys
+    assert buys[0]["size_pct"] == pytest.approx(0.18)
+    assert "validated_scout" in buys[0]["rationale"]
+    assert "gross=0.18" in buys[0]["rationale"]
+
+
+def test_downtrend_scout_exception_rejects_weak_cmc_or_bad_route(cfg):
+    cfg = {**cfg, "decision": {**cfg["decision"],
+                               "rotation_downtrend_min_momentum": 0.28,
+                               "entry_filter": {"enabled": True,
+                                                "min_quality_downtrend": -1.0,
+                                                "min_return_6h_downtrend": 0.0,
+                                                "max_return_6h_downtrend": 0.08,
+                                                "scout_exception_enabled": True,
+                                                "scout_min_score": 0.31,
+                                                "scout_min_quality_downtrend": 0.30,
+                                                "scout_min_return_6h_downtrend": -0.02,
+                                                "scout_max_return_6h_downtrend": 0.02,
+                                                "scout_min_return_24h_downtrend": 0.02,
+                                                "scout_max_cmc_pct_24h_downtrend": 0.12,
+                                                "scout_max_cmc_pct_7d_downtrend": 0.30,
+                                                "scout_min_x402": 0.25,
+                                                "scout_min_cmc": 0.25,
+                                                "scout_max_round_trip_loss_pct": 1.8,
+                                                "scout_max_token_risk_score": 30,
+                                                "scout_min_volume_24h_usd": 5_000_000}}}
+    d = RotationDecider(cfg)
+    signals = {
+        "ETH": _sig("ETH", 0.335, Regime.TREND_DOWN),
+        "LINK": _sig("LINK", 0.290, Regime.TREND_DOWN),
+        "DOGE": _sig("DOGE", 0.280, Regime.TREND_DOWN),
+    }
+    snap = _snap("ETH", "LINK", "DOGE")
+    snap["ETH"].update({
+        "return_6h": -0.012,
+        "return_24h": 0.05,
+        "cmc_pct_24h": 0.05,
+        "cmc_pct_7d": -0.10,
+        "cmc_volume_24h": 20_000_000,
+        "cmc_score": -0.10,
+        "x402_token_score": 0.27,
+        "token_risk_score": 10,
+        "round_trip_loss_pct": 1.4,
+    })
+    for token in ("LINK", "DOGE"):
+        snap[token].update({
+            "return_6h": -0.05,
+            "return_24h": -0.10,
+            "cmc_pct_24h": -0.05,
+            "cmc_pct_7d": -0.20,
+            "cmc_volume_24h": 10_000_000,
+            "cmc_score": 0.10,
+            "x402_token_score": 0.10,
+            "token_risk_score": 10,
+            "round_trip_loss_pct": 1.4,
+        })
+    out = d.decide(snap, signals, _portfolio(),
+                   {"signal_streaks": {"ETH": 3, "LINK": 3, "DOGE": 3},
+                    "leaderboard_rank": 31,
+                    "leaderboard_return_pct": -9.0,
+                    "executable_return_pct": -9.0})
+    assert not any(x["token"] == "ETH" and x["action"] == "buy" for x in out)
+    assert d.last_debug["rejects"]["ETH"].startswith("EntryGate:bad_6h")
+
+    snap["ETH"]["cmc_score"] = 0.35
+    snap["ETH"]["round_trip_loss_pct"] = 2.4
+    out = d.decide(snap, signals, _portfolio(),
+                   {"signal_streaks": {"ETH": 3, "LINK": 3, "DOGE": 3},
+                    "leaderboard_rank": 31,
+                    "leaderboard_return_pct": -9.0,
+                    "executable_return_pct": -9.0})
+    assert not any(x["token"] == "ETH" and x["action"] == "buy" for x in out)
+    assert d.last_debug["rejects"]["ETH"].startswith("EntryGate:bad_6h")
+
+
 def test_held_token_exits_when_short_momentum_breaks_in_downtrend(cfg):
     cfg = {**cfg, "decision": {**cfg["decision"],
                                "held_exit": {"enabled": True,
