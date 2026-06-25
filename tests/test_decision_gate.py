@@ -103,3 +103,16 @@ def test_deny_buy_lifts_only_after_executable_validation(cfg):
 
     cfg["universe_runtime"]["ZETA"]["round_trip_loss_pct"] = 9.0
     assert "ZETA" not in tradeable_buy_tokens(cfg)
+
+
+def test_sell_only_token_stays_out_of_buy_universe_even_when_validated(cfg):
+    cfg = {**cfg, "twak": {**cfg["twak"],
+                           "token_contracts": {"TAC": "0x1", "CAKE": "0x2"},
+                           "sell_only_tokens": ["TAC"]},
+           "universe_runtime": {"TAC": {
+               "round_trip_loss_pct": 1.2,
+               "risk_level": "low",
+               "history_bars": cfg["universe"]["min_history_bars"],
+           }}}
+    assert "TAC" not in tradeable_buy_tokens(cfg)
+    assert "CAKE" in tradeable_buy_tokens(cfg)

@@ -139,7 +139,12 @@ def tradeable_buy_tokens(cfg: dict) -> set[str]:
     deny = set(cfg["twak"].get("deny_buy", []))
     # Quarantine is lifted only for freshly execution-validated names.
     deny = {t for t in deny if not executable_validated_token(cfg, t)}
-    return set(cfg["twak"]["token_contracts"]) - deny
+    # Some symbols can be execution-manageable but intentionally sell-only.
+    # Example: a token discovered through portfolio reconciliation may need a
+    # contract mapping so the bot can quote/exit it, while new entries remain
+    # forbidden until it is deliberately promoted into the buy universe.
+    sell_only = set(cfg["twak"].get("sell_only_tokens", []))
+    return set(cfg["twak"]["token_contracts"]) - deny - sell_only
 
 
 def _validate(decisions: list) -> list[dict]:
