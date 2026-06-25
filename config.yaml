@@ -211,7 +211,7 @@ decision:
     # execution validation and the higher rotation threshold.
     floor_score_downtrend: 0.28
     floor_score_uptrend: 0.20
-    floor_score_buffer_downtrend: 0.02
+    floor_score_buffer_downtrend: 0.04
     floor_score_buffer_uptrend: 0.01
     min_quality_downtrend: 0.0
     min_return_6h_downtrend: -0.030
