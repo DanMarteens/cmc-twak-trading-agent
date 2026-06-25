@@ -546,7 +546,8 @@ class TwakExecutor:
         quote = float(Decimal(quote_delta).scaleb(-quote_now.decimals))
         if order.action == "buy":
             fill_price = _apply_live_buy(state, order.token, quote, qty,
-                                         float(quote_now.amount))
+                                         float(quote_now.amount),
+                                         opened_ts=time.time())
         else:
             fill_price = _apply_live_close(state, order.token, qty, quote,
                                            float(quote_now.amount),

@@ -262,7 +262,8 @@ def test_ambiguous_execution_blocks_token_and_does_not_count_fill(cfg, tmp_path)
     assert any(r["kind"] == "exec_unknown" for r in log.rows)
 
 
-def test_restart_reconciles_pending_buy_from_atomic_balance_deltas(cfg, tmp_path):
+def test_restart_reconciles_pending_buy_from_atomic_balance_deltas(cfg, tmp_path,
+                                                                   monkeypatch):
     ex = TwakExecutor(live_cfg(cfg, tmp_path))
     state = PortfolioState(cash_usd=10)
     order = Order(client_order_id="oid", token="RAY", action="buy", size_usd=2,
@@ -272,6 +273,7 @@ def test_restart_reconciles_pending_buy_from_atomic_balance_deltas(cfg, tmp_path
     ex._balances = lambda token: (
         ChainBalance(4 * 10**6, 6), ChainBalance(8 * 10**18, 18)
     )
+    monkeypatch.setattr("agent.executor.time.time", lambda: 1234.0)
 
     result = ex.reconcile(order, state)
 
@@ -279,6 +281,7 @@ def test_restart_reconciles_pending_buy_from_atomic_balance_deltas(cfg, tmp_path
     assert result.tx_hash == "balance-delta:oid"
     assert state.open_orders["oid"].status == "FILLED"
     assert state.positions["RAY"].qty == 4
+    assert state.positions["RAY"].opened_ts == 1234.0
     assert state.cash_usd == 8
     assert state.trade_count_total == 1
 
