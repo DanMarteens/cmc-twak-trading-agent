@@ -840,6 +840,37 @@ def test_fresh_held_token_quality_exit_respects_min_hold(cfg):
     assert "quality" in close["rationale"]
 
 
+def test_fresh_held_token_small_score_wiggle_respects_min_hold(cfg):
+    cfg = {**cfg, "decision": {**cfg["decision"],
+                               "held_exit": {"enabled": True,
+                                             "floor_score_downtrend": 0.28,
+                                             "floor_score_buffer_downtrend": 0.02,
+                                             "fresh_hard_floor_score_downtrend": 0.18,
+                                             "min_quality_downtrend": -1.0,
+                                             "min_return_6h_downtrend": -0.20,
+                                             "min_hold_seconds_downtrend": 2700},
+                               "dynamic_sizing": {"enabled": False}}}
+    d = RotationDecider(cfg)
+    d._now = 10_000
+    snap = _snap("UAI")
+    snap["UAI"].update({"return_6h": 0.0, "return_24h": 0.03})
+    fresh = _portfolio_with_timing(
+        {"UAI": 1.0},
+        values={"UAI": 10.0},
+        avg_prices={"UAI": 10.0},
+        opened_ts={"UAI": 9_700},
+    )
+
+    signals = {"UAI": _sig("UAI", 0.252, Regime.TREND_DOWN)}
+    out = d.decide(snap, signals, fresh, {"signal_streaks": {"UAI": 3}})
+    assert not any(x["token"] == "UAI" and x["action"] == "close" for x in out)
+
+    signals = {"UAI": _sig("UAI", 0.12, Regime.TREND_DOWN)}
+    out = d.decide(snap, signals, fresh, {"signal_streaks": {"UAI": 3}})
+    close = next(x for x in out if x["token"] == "UAI" and x["action"] == "close")
+    assert "score" in close["rationale"]
+
+
 def test_held_token_micro_profit_take_trims_winner(cfg):
     cfg = {**cfg, "decision": {**cfg["decision"],
                                "held_exit": {"enabled": True,

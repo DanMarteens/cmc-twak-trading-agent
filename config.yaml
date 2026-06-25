@@ -198,6 +198,7 @@ decision:
     min_quality_downtrend: 0.0
     min_return_6h_downtrend: -0.030
     min_hold_seconds_downtrend: 2700      # do not kill a fresh recovery scout on one noisy 5m tick
+    fresh_hard_floor_score_downtrend: 0.18 # fresh scout may wiggle, but still exits on real signal collapse
     stale_loss_pct: -0.006
     stale_loss_min_return_6h: -0.005
     fresh_loss_rotation_min_hold_seconds_downtrend: 2700

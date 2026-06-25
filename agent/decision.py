@@ -586,6 +586,9 @@ class RotationDecider:
         self.held_min_quality_down = float(exit_cfg.get("min_quality_downtrend", 0.0))
         self.held_min_return_6h_down = float(exit_cfg.get("min_return_6h_downtrend", -0.015))
         self.held_min_hold_sec_down = float(exit_cfg.get("min_hold_seconds_downtrend", 0.0))
+        self.held_fresh_hard_floor_down = float(exit_cfg.get(
+            "fresh_hard_floor_score_downtrend",
+            max(0.0, self.held_exit_floor_down - self.held_exit_floor_buffer_down - 0.08)))
         self.held_stale_loss_pct = float(exit_cfg.get("stale_loss_pct", -0.006))
         self.held_stale_loss_min_r6 = float(exit_cfg.get("stale_loss_min_return_6h", -0.005))
         self.fresh_loss_rotation_min_hold_sec_down = float(exit_cfg.get(
@@ -955,7 +958,12 @@ class RotationDecider:
                         if regime is Regime.TREND_DOWN
                         else self.held_exit_floor_buffer_up)
         effective_floor = floor - max(0.0, floor_buffer)
+        age_sec = self._held_age_seconds(token, portfolio)
         if signal.score < effective_floor:
+            if (regime is Regime.TREND_DOWN
+                    and age_sec < self.held_min_hold_sec_down
+                    and signal.score >= self.held_fresh_hard_floor_down):
+                return None
             return (f"health exit: score {signal.score:.3f} < "
                     f"floor {effective_floor:.3f} (base {floor:.3f})")
         if regime is Regime.TREND_DOWN:
@@ -963,7 +971,6 @@ class RotationDecider:
             q = quality.get(token, 0.0)
             r6 = float(d.get("return_6h", 0.0) or 0.0)
             pnl = self._held_pnl(token, portfolio)
-            age_sec = self._held_age_seconds(token, portfolio)
             if q < self.held_min_quality_down and age_sec >= self.held_min_hold_sec_down:
                 return f"health exit: quality {q:.3f} < {self.held_min_quality_down:.3f}"
             if r6 < self.held_min_return_6h_down and age_sec >= self.held_min_hold_sec_down:
