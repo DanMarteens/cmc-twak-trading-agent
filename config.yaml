@@ -184,6 +184,7 @@ decision:
     scout_min_return_6h_downtrend: -0.02
     scout_max_return_6h_downtrend: 0.06
     scout_min_return_24h_downtrend: 0.02
+    scout_max_cmc_pct_1h_downtrend: 0.03
     scout_max_cmc_pct_24h_downtrend: 0.18
     scout_max_cmc_pct_7d_downtrend: 0.30
     scout_min_x402: 0.0
@@ -221,10 +222,10 @@ decision:
     floor_score_buffer_uptrend: 0.01
     min_quality_downtrend: 0.0
     min_return_6h_downtrend: -0.030
-    min_hold_seconds_downtrend: 2700      # do not kill a fresh recovery scout on one noisy 5m tick
+    min_hold_seconds_downtrend: 3600      # do not kill a fresh recovery scout on one noisy 5m tick
     fresh_hard_floor_score_downtrend: 0.18 # fresh scout may wiggle, but still exits on real signal collapse
-    stale_loss_pct: -0.006
-    stale_loss_min_return_6h: -0.005
+    stale_loss_pct: -0.018
+    stale_loss_min_return_6h: -0.012
     fresh_loss_rotation_min_hold_seconds_downtrend: 2700
     fresh_loss_rotation_hurdle_downtrend: 1.0
     fresh_loss_rotation_max_pnl_pct: 0.003

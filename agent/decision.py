@@ -540,6 +540,8 @@ class RotationDecider:
             "scout_max_return_6h_downtrend", 0.02))
         self.scout_min_r24_down = float(entry_cfg.get(
             "scout_min_return_24h_downtrend", 0.02))
+        self.scout_max_c1_down = float(entry_cfg.get(
+            "scout_max_cmc_pct_1h_downtrend", self.max_entry_cmc_1h_down))
         self.scout_max_c24_down = float(entry_cfg.get(
             "scout_max_cmc_pct_24h_downtrend", self.max_entry_cmc_24h_down))
         self.scout_max_c7_down = float(entry_cfg.get(
@@ -951,6 +953,7 @@ class RotationDecider:
         d = snapshot.get(signal.token, {})
         r6 = float(d.get("return_6h", 0.0) or 0.0)
         r24 = float(d.get("return_24h", 0.0) or 0.0)
+        c1 = float(d.get("cmc_pct_1h", 0.0) or 0.0)
         c24 = float(d.get("cmc_pct_24h", 0.0) or 0.0)
         c7 = float(d.get("cmc_pct_7d", 0.0) or 0.0)
         return (
@@ -958,6 +961,7 @@ class RotationDecider:
             and float(quality.get(signal.token, -1.0)) >= self.scout_min_quality_down
             and self.scout_min_r6_down <= r6 <= self.scout_max_r6_down
             and r24 >= self.scout_min_r24_down
+            and c1 <= self.scout_max_c1_down
             and c24 <= self.scout_max_c24_down
             and c7 <= self.scout_max_c7_down
             and float(d.get("x402_token_score", 0.0) or 0.0) >= self.scout_min_x402
