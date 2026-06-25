@@ -53,7 +53,7 @@ risk:
   min_trades_per_day: 1
   min_trades_per_week: 7
   force_daily_trade: false      # disabled: never trade just to satisfy daily activity
-  max_trades_per_day: 24        # NEW ENTRIES only; enough for recovery rotations without churn
+  max_trades_per_day: 48        # NEW ENTRIES/top-ups only; lets recovery scale without churn-lock
   min_seconds_between_trades: 300   # align entry pacing with the 5-minute strategy tick;
                                     # other anti-churn gates still apply. Closes are EXEMPT
                                     # (risk_gate lets exits through), so this only paces new
@@ -185,6 +185,18 @@ decision:
     scout_max_round_trip_loss_pct: 1.8
     scout_max_token_risk_score: 30
     scout_min_volume_24h_usd: 5000000
+  recovery_escalation:
+    enabled: true
+    # Scout entries start small. If they survive and remain route-cheap while
+    # we are still far from TOP5, scale the SAME validated holdings instead of
+    # sitting at toe-hold size. This never oversizes a brand-new candidate.
+    rank_above: 20
+    min_gap_to_top5_pct: 5.0
+    min_hold_seconds: 600
+    scale_gross_exposure_pct: 0.36
+    confirmed_hold_seconds: 1800
+    confirmed_gross_exposure_pct: 0.50
+    max_leaderboard_drawdown_pct: 24.0
   held_exit:
     enabled: true
     # Held-token health floor. A current position may stay below the new-entry

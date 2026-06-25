@@ -326,6 +326,10 @@ class SizingPolicy:
                        else self.strategy._catchup_gross(state.targets, signals,
                                                          risk_limits, snapshot,
                                                          state.quality))
+        if not state.top5_active:
+            state.gross = self.strategy._recovery_escalated_gross(
+                state, signals, portfolio, risk_limits, snapshot
+            )
         state.target_value = (portfolio["total_equity_usd"] * state.gross
                               / max(len(state.targets), 1))
         return state
@@ -548,6 +552,15 @@ class RotationDecider:
             "scout_max_token_risk_score", 30.0))
         self.scout_min_volume = float(entry_cfg.get(
             "scout_min_volume_24h_usd", 5_000_000))
+        esc = d.get("recovery_escalation", {}) or {}
+        self.recovery_escalation_enabled = bool(esc.get("enabled", False))
+        self.recovery_rank_above = int(esc.get("rank_above", 20))
+        self.recovery_min_gap_top5 = float(esc.get("min_gap_to_top5_pct", 5.0))
+        self.recovery_min_hold_sec = float(esc.get("min_hold_seconds", 600))
+        self.recovery_scale_gross = float(esc.get("scale_gross_exposure_pct", 0.36))
+        self.recovery_confirmed_hold_sec = float(esc.get("confirmed_hold_seconds", 1800))
+        self.recovery_confirmed_gross = float(esc.get("confirmed_gross_exposure_pct", 0.50))
+        self.recovery_max_lb_dd = float(esc.get("max_leaderboard_drawdown_pct", 24.0))
         ds = d.get("dynamic_sizing", {}) or {}
         self.dynamic_sizing = bool(ds.get("enabled", False))
         self.ds_low_score = float(ds.get("low_score", self.down_min_mom))
@@ -682,6 +695,61 @@ class RotationDecider:
             lb_ret_f = exec_ret
         return (rank_i is None or rank_i > self.ds_hc_catchup_rank_above
                 or min(exec_ret, lb_ret_f) < 0.0)
+
+    @staticmethod
+    def _safe_float(value, default: float | None = None) -> float | None:
+        try:
+            return float(value)
+        except (TypeError, ValueError):
+            return default
+
+    def _gap_to_top5_pct(self, risk_limits: dict) -> float | None:
+        top5 = self._safe_float(risk_limits.get("leaderboard_top5_return_pct"))
+        own = self._safe_float(
+            risk_limits.get("leaderboard_return_pct"),
+            self._safe_float(risk_limits.get("executable_return_pct"), 0.0),
+        )
+        if top5 is None or own is None:
+            return None
+        return top5 - own
+
+    def _recovery_escalated_gross(self, state: StrategyState,
+                                  signals: dict[str, TokenSignal],
+                                  portfolio: dict, risk_limits: dict,
+                                  snapshot: dict) -> float:
+        """Scale surviving scouts while we are far behind, without changing entry rules.
+
+        A scout's first job is discovery.  If it survives the minimum hold and
+        remains route-cheap/validated, staying at toe-hold size leaves us unable
+        to close a large leaderboard gap.  This ladder only tops up existing
+        targets; it never turns a brand-new candidate into an oversized entry.
+        """
+        if not self.recovery_escalation_enabled or not state.targets:
+            return state.gross
+        try:
+            rank = int(risk_limits.get("leaderboard_rank"))
+        except (TypeError, ValueError):
+            rank = 999
+        gap = self._gap_to_top5_pct(risk_limits)
+        if rank <= self.recovery_rank_above or gap is None or gap < self.recovery_min_gap_top5:
+            return state.gross
+        lb_dd = self._safe_float(risk_limits.get("leaderboard_drawdown_pct"), 0.0) or 0.0
+        if lb_dd >= self.recovery_max_lb_dd:
+            return state.gross
+        if not set(state.targets).issubset(state.held):
+            return state.gross
+
+        ages = [self._held_age_seconds(t, portfolio) for t in state.targets]
+        if not ages or min(ages) < self.recovery_min_hold_sec:
+            return state.gross
+        if not all(t in signals and self._scout_exception(signals[t], snapshot, state.quality)
+                   for t in state.targets):
+            return state.gross
+
+        target = self.recovery_scale_gross
+        if min(ages) >= self.recovery_confirmed_hold_sec:
+            target = self.recovery_confirmed_gross
+        return min(self.target_gross, max(state.gross, target))
 
     def _high_conviction_target(self, token: str, signals: dict[str, TokenSignal],
                                 snapshot: dict, quality: dict[str, float],
