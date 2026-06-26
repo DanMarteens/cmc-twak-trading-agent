@@ -132,6 +132,50 @@ def test_llm_cash_preservation_veto_can_be_overridden_for_validated_scout(monkey
                     "rationale": "rotate in: validated_scout, gross=0.18; AI cash-veto overridden by scout recovery guardrail"}]
 
 
+def test_llm_cash_veto_override_treats_scout_sized_candidate_as_scout(monkeypatch, cfg):
+    cfg = {**cfg,
+           "decision": {**cfg["decision"],
+                        "entry_filter": {**cfg["decision"]["entry_filter"],
+                                         "scout_exposure_pct": 0.18,
+                                         "scout_min_score": 0.28,
+                                         "scout_min_cmc": 0.25,
+                                         "scout_min_x402": 0.25,
+                                         "scout_min_return_6h_downtrend": -0.02,
+                                         "scout_max_round_trip_loss_pct": 2.0,
+                                         "scout_max_token_risk_score": 30}},
+           "llm": {**cfg["llm"], "second_gate": True,
+                   "cash_veto_override_enabled": True}}
+
+    class ScoutSizedBase:
+        last_debug = {
+            "top_ranked": [{
+                "token": "LAB",
+                "score": 0.2895,
+                "cmc_score": 0.8934,
+                "x402_token_score": 0.2711,
+                "round_trip_loss_pct": 1.9324,
+                "token_risk_score": 10,
+                "return_6h": 0.038,
+            }]
+        }
+
+        def decide(self, snapshot, signals, portfolio, risk_limits):
+            return [{"token": "LAB", "action": "buy", "size_pct": 0.18,
+                     "confidence": 0.72,
+                     "rationale": "rotate in: continuation, quality=0.784, gross=0.18"}]
+
+    monkeypatch.setattr(decision.llm, "complete", lambda *a, **k: (
+        '{"decisions":[{"token":"LAB","action":"hold","size_pct":0,'
+        '"confidence":0,"rationale":"trend_down preserve cash"}]}'
+    ))
+    out = LLMDecider(cfg, fallback=ScoutSizedBase()).decide(
+        {}, {}, {"positions": {}}, {"leaderboard_rank": 28,
+                                    "leaderboard_drawdown_pct": 18.4})
+    assert out == [{"token": "LAB", "action": "buy", "size_pct": 0.18,
+                    "confidence": 0.72,
+                    "rationale": "rotate in: continuation, quality=0.784, gross=0.18; AI cash-veto overridden by scout recovery guardrail"}]
+
+
 def test_llm_cash_preservation_veto_still_blocks_scout_with_hard_risk(monkeypatch, cfg):
     cfg = {**cfg,
            "decision": {**cfg["decision"],

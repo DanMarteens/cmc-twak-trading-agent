@@ -1390,7 +1390,12 @@ class LLMDecider:
         token_risk = float(details.get("token_risk_score") or 999.0)
         r6 = float(details.get("return_6h") or 0.0)
         entry_cfg = self.cfg.get("decision", {}).get("entry_filter", {}) or {}
-        is_scout = "validated_scout" in str(candidate.get("rationale", ""))
+        scout_size = float(entry_cfg.get("scout_exposure_pct", 0.18) or 0.18)
+        candidate_size = float(candidate.get("size_pct", 0.0) or 0.0)
+        is_scout = (
+            "validated_scout" in str(candidate.get("rationale", ""))
+            or (candidate_size > 0 and candidate_size <= scout_size + 1e-9)
+        )
         min_score = float(llm_cfg.get(
             "cash_veto_override_scout_min_score" if is_scout else "cash_veto_override_min_score",
             entry_cfg.get("scout_min_score", 0.31) if is_scout else 0.35))
