@@ -216,6 +216,11 @@ def _decision_trace(cfg, tick_id, snapshot, signals, portfolio, risk_limits,
             "cash_usd": round(float(portfolio.get("cash_usd", 0.0)), 6),
             "total_equity_usd": round(float(portfolio.get("total_equity_usd", 0.0)), 6),
             "positions": portfolio.get("positions", {}),
+            "avg_prices": portfolio.get("avg_prices", {}),
+            "position_values": {
+                t: round(float(v), 6)
+                for t, v in (portfolio.get("position_values", {}) or {}).items()
+            },
         },
         "gate": {
             "name": threshold_name,

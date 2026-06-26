@@ -263,17 +263,36 @@ def build_data(with_wallet=True, with_market=True):
         track["leaderboard_rank"] = lb_status.get("rank")
         track["leaderboard_value_usd"] = lb_status.get("value_usd")
         track["leaderboard_generated_ts"] = lb_status.get("leaderboard_generated_ts")
+    latest_trace = next((r for r in reversed(rows) if r.get("kind") == "decision_trace"), {})
+    trace_portfolio = latest_trace.get("portfolio") or {}
+    trace_position_values = trace_portfolio.get("position_values") or {}
+    wallet_prices = {}
+    for h in portfolio.get("holdings", []) or []:
+        sym = h.get("sym")
+        amount = float(h.get("amount") or 0.0)
+        usd = float(h.get("usd") or 0.0)
+        if sym and amount > 0 and usd > 0:
+            wallet_prices[sym] = usd / amount
     # open positions with entry -> current price -> unrealized P&L
     positions = []
     if live and st.get("positions"):
         mp = (market or {}).get("prices", {}) or {}
         for tok, p in st["positions"].items():
             entry = p.get("avg_price", 0) or 0
-            now = mp.get(tok) or entry
             qty = p.get("qty", 0) or 0
+            source = "cache"
+            if wallet_prices.get(tok):
+                now = wallet_prices[tok]
+                source = "wallet"
+            elif qty and trace_position_values.get(tok):
+                now = float(trace_position_values[tok]) / qty
+                source = "agent"
+            else:
+                now = mp.get(tok) or entry
             positions.append({"token": tok, "entry": entry, "now": now,
                               "pnl": round((now / entry - 1) * 100, 2) if entry else 0.0,
                               "value": round(qty * now, 2),
+                              "mark_source": source,
                               "logo": _logo(tok, cfg["twak"]["token_contracts"].get(tok))})
     kill = cfg["risk"]["drawdown_kill_pct"]
     posture = (cfg.get("decision", {}).get("strategy_label") or
@@ -290,7 +309,6 @@ def build_data(with_wallet=True, with_market=True):
                    for k, v in sorted(latest_boosts.items(),
                                       key=lambda kv: float(kv[1]), reverse=True)]
     } if latest_x402 else None
-    latest_trace = next((r for r in reversed(rows) if r.get("kind") == "decision_trace"), {})
     strategy_debug = latest_trace.get("strategy_debug") or {}
     trace_summary = {
         "ts": latest_trace.get("ts"),
